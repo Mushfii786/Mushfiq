@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, Video } from 'lucide-react';
+import { ArrowRight, Video, Lock } from 'lucide-react';
 import { videography } from '../config/site';
 import { VideoItem } from '../types';
 import { VideoLightbox } from './VideoLightbox';
@@ -65,8 +65,8 @@ export function Videography() {
         autoPlayInterval={5000}
       />
 
-      {/* SEE MORE Action Button */}
-      <div className="text-center mt-8 sm:mt-10">
+      {/* Action Buttons: SEE MORE & Admin Access */}
+      <div className="flex flex-wrap items-center justify-center gap-3 mt-8 sm:mt-10">
         <button
           onClick={() => {
             setShowFullGallery(true);
@@ -82,6 +82,19 @@ export function Videography() {
           <div className="relative z-10 w-6 h-6 rounded-full bg-white/5 border border-white/10 group-hover:bg-[#2563EB] group-hover:border-[#2563EB] flex items-center justify-center transition-all duration-300">
             <ArrowRight className="w-3 h-3 text-blue-400 group-hover:text-white transition-transform duration-300 group-hover:translate-x-0.5" />
           </div>
+        </button>
+
+        {/* Quick Admin Access Button */}
+        <button
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent('open-admin-panel'));
+          }}
+          className="group px-4 py-2.5 sm:py-3 rounded-full bg-neutral-950/80 hover:bg-neutral-900 text-neutral-400 hover:text-white border border-white/10 hover:border-blue-500/50 text-[11px] sm:text-xs font-mono font-bold tracking-wider uppercase transition-all duration-300 cursor-pointer shadow-md hover:scale-105 active:scale-95 inline-flex items-center gap-2 backdrop-blur-md"
+          title="Owner Admin Access (Id: Mushfii_786 | Pass: @Mushfii_786 | Shortcut: Alt+A)"
+          aria-label="Open Admin Panel"
+        >
+          <Lock className="w-3.5 h-3.5 text-neutral-400 group-hover:text-blue-400 transition-colors" />
+          <span>ADMIN</span>
         </button>
       </div>
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowUp, Instagram, Github, Linkedin, Mail, MessageCircle, Sparkles } from 'lucide-react';
+import { ArrowUp, Instagram, Github, Linkedin, Mail, MessageCircle, Sparkles, Lock } from 'lucide-react';
 import { siteConfig } from '../config/site';
 
 export function Footer() {
@@ -150,16 +150,29 @@ export function Footer() {
             © 2026 <span className="text-white font-extrabold tracking-widest uppercase">MUSHFII</span>. Photography <span className="text-purple-400/80 mx-0.5 sm:mx-1">•</span> Videography <span className="text-purple-400/80 mx-0.5 sm:mx-1">•</span> Design
           </div>
 
-          {/* Premium Back to Top Button */}
-          <motion.button
-            onClick={scrollToTop}
-            whileHover={{ scale: 1.05, y: -2 }}
-            whileTap={{ scale: 0.95 }}
-            className="group relative inline-flex items-center gap-2 px-3 py-2 sm:px-0 sm:py-0 text-xs font-mono text-neutral-400 hover:text-white transition-all duration-300 cursor-pointer bg-neutral-900/60 sm:bg-transparent border border-white/5 sm:border-none rounded-full sm:rounded-none"
-          >
-            <span>Back to top</span>
-            <ArrowUp className="w-3.5 h-3.5 text-purple-400 group-hover:text-purple-300 transition-transform duration-300 group-hover:-translate-y-0.5" />
-          </motion.button>
+          <div className="flex items-center gap-3">
+            {/* Anywhere Admin Access Lock Button */}
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('open-admin-panel'))}
+              className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-neutral-900/80 hover:bg-neutral-800 text-neutral-400 hover:text-white border border-white/10 hover:border-blue-500/40 text-[11px] font-mono transition-all duration-200 cursor-pointer shadow-sm hover:scale-105 active:scale-95"
+              title="Open Admin Panel (Id: Mushfii_786 | Pass: @Mushfii_786 | Shortcut: Alt+A)"
+              aria-label="Admin Access"
+            >
+              <Lock className="w-3 h-3 text-neutral-500 group-hover:text-blue-400 transition-colors" />
+              <span className="tracking-wider">ADMIN</span>
+            </button>
+
+            {/* Premium Back to Top Button */}
+            <motion.button
+              onClick={scrollToTop}
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+              className="group relative inline-flex items-center gap-2 px-3 py-2 sm:px-0 sm:py-0 text-xs font-mono text-neutral-400 hover:text-white transition-all duration-300 cursor-pointer bg-neutral-900/60 sm:bg-transparent border border-white/5 sm:border-none rounded-full sm:rounded-none"
+            >
+              <span>Back to top</span>
+              <ArrowUp className="w-3.5 h-3.5 text-purple-400 group-hover:text-purple-300 transition-transform duration-300 group-hover:-translate-y-0.5" />
+            </motion.button>
+          </div>
 
         </div>
 

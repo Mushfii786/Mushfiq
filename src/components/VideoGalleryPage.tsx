@@ -418,6 +418,25 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
     };
   }, []);
 
+  // Listen to custom-videos-updated event
+  useEffect(() => {
+    const handleSync = () => {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            setCustomVideos(parsed.map((item: any) => ({ ...item, isCustom: true })));
+          }
+        }
+      } catch {
+        // ignore
+      }
+    };
+    window.addEventListener('custom-videos-updated', handleSync);
+    return () => window.removeEventListener('custom-videos-updated', handleSync);
+  }, []);
+
   const handleAddVideo = (newVideo: VideoGalleryItem) => {
     const videoWithCustom: VideoGalleryItem = { ...newVideo, isCustom: true };
     const updated = [videoWithCustom, ...customVideos];
@@ -427,6 +446,7 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
     } catch (e) {
       console.error('Failed to save to localStorage', e);
     }
+    window.dispatchEvent(new CustomEvent('custom-videos-updated'));
     // Instantly open the newly added video so the user previews it immediately!
     setActiveVideo(videoWithCustom);
     setShowAddModal(false);
@@ -442,6 +462,7 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
     } catch (e) {
       console.error('Failed to delete video', e);
     }
+    window.dispatchEvent(new CustomEvent('custom-videos-updated'));
     if (activeVideo?.id === id) {
       setActiveVideo(null);
     }
@@ -807,7 +828,7 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
             <button
               onClick={() => setShowAdminModal(true)}
               className="group relative flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-neutral-900/90 hover:bg-neutral-800 text-neutral-400 hover:text-white border border-neutral-800/80 hover:border-blue-500/50 transition-all duration-200 cursor-pointer shadow-sm hover:scale-105 active:scale-95"
-              title={isAdminAuthenticated ? "Owner Admin Active • Manage Google Drive Videos" : "Owner Admin Access (Requires ID & Password)"}
+              title={isAdminAuthenticated ? "Owner Admin Active • Manage Video Library" : "Owner Admin Access (Id: Mushfii_786 | Pass: @Mushfii_786)"}
               aria-label="Admin Access"
             >
               {isAdminAuthenticated ? (

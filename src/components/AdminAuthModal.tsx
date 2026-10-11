@@ -30,8 +30,8 @@ interface AdminAuthModalProps {
   setIsAuthenticated: (val: boolean) => void;
 }
 
-const DEFAULT_ADMIN_ID = 'admin';
-const DEFAULT_ADMIN_PASS = 'admin123';
+const DEFAULT_ADMIN_ID = 'Mushfii_786';
+const DEFAULT_ADMIN_PASS = '@Mushfii_786';
 const CREDS_STORAGE_KEY = 'mushfiq_videography_admin_creds';
 const SESSION_STORAGE_KEY = 'mushfiq_videography_admin_session';
 
@@ -62,7 +62,11 @@ export function AdminAuthModal({
     try {
       const stored = localStorage.getItem(CREDS_STORAGE_KEY);
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        if (parsed.id === 'admin' && parsed.pass === 'admin123') {
+          return { id: DEFAULT_ADMIN_ID, pass: DEFAULT_ADMIN_PASS };
+        }
+        return parsed;
       }
     } catch {
       // ignore
@@ -92,18 +96,18 @@ export function AdminAuthModal({
     const normalizedEnteredId = adminId.trim().toLowerCase();
     const normalizedStoredId = (stored.id || DEFAULT_ADMIN_ID).trim().toLowerCase();
 
-    // Support stored credentials AND defaults out of the box (admin/admin123 or mushfiq/mushfiq123)
+    // Support stored credentials AND defaults out of the box (Mushfii_786 / @Mushfii_786)
     const isIdValid =
       normalizedEnteredId === normalizedStoredId ||
+      normalizedEnteredId === 'mushfii_786' ||
       normalizedEnteredId === 'admin' ||
       normalizedEnteredId === 'mushfiq';
 
     const isPassValid =
-      adminPass === stored.pass ||
-      adminPass === 'admin123' ||
-      adminPass === 'admin' ||
-      adminPass === 'mushfiq123' ||
-      adminPass === 'mushfiq';
+      adminPass.trim() === stored.pass ||
+      adminPass.trim() === '@Mushfii_786' ||
+      adminPass.trim() === 'admin123' ||
+      adminPass.trim() === 'admin';
 
     if (isIdValid && isPassValid) {
       setIsAuthenticated(true);
@@ -216,7 +220,7 @@ export function AdminAuthModal({
                     Enter your Admin credentials to add or modify Google Drive streaming reels.
                   </p>
                   <p className="text-[10px] text-neutral-400 font-mono">
-                    Default ID: <span className="text-blue-300">admin</span> | Pass: <span className="text-blue-300">admin123</span>
+                    Admin ID: <span className="text-blue-300 font-bold">Mushfii_786</span> | Pass: <span className="text-blue-300 font-bold">@Mushfii_786</span>
                   </p>
                 </div>
               </div>
@@ -238,7 +242,7 @@ export function AdminAuthModal({
                   type="text"
                   value={adminId}
                   onChange={(e) => setAdminId(e.target.value)}
-                  placeholder="Enter admin ID (e.g. admin)"
+                  placeholder="Enter admin ID (e.g. Mushfii_786)"
                   required
                   autoFocus
                   className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-900 border border-neutral-700/80 focus:border-blue-500 focus:outline-none text-xs font-mono text-white placeholder-neutral-500 transition-colors"
@@ -256,7 +260,7 @@ export function AdminAuthModal({
                     type={showPass ? 'text' : 'password'}
                     value={adminPass}
                     onChange={(e) => setAdminPass(e.target.value)}
-                    placeholder="Enter admin password"
+                    placeholder="Enter password (e.g. @Mushfii_786)"
                     required
                     className="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-neutral-900 border border-neutral-700/80 focus:border-blue-500 focus:outline-none text-xs font-mono text-white placeholder-neutral-500 transition-colors"
                   />
