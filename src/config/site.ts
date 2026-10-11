@@ -235,6 +235,22 @@ export const photography: Photo[] = [
 
 export const videography: VideoItem[] = [
   {
+    id: "video-drive-1",
+    title: "Cinematic Horizons Reel (Google Drive)",
+    category: "Drive Stream Reel",
+    posterUrl: "https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&q=80&w=1200&h=1600",
+    videoUrl: "https://drive.google.com/file/d/1wN-76uOqA9mB5YxX3_7C3U2cZ4j9L1vP/preview",
+    caption: "Cinematic drone sweep and horizon perspective streamed live via Google Drive integration.",
+    location: "Kerala Coastline",
+    duration: "0:45",
+    camera: "Sony FX3",
+    lens: "35mm T1.5 Anamorphic",
+    settings: "4K 60fps • S-Log3",
+    year: "2026 Film",
+    views: 18400,
+    likes: 2150
+  },
+  {
     id: "video-1",
     title: "Tokyo Neon Streets & Midnight Drift",
     category: "Cinematic Reel",

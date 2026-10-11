@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, X, Maximize2, Heart, Share2, Camera, MapPin, Sparkles, Video, Play, Eye, Film } from 'lucide-react';
+import { ArrowLeft, X, Maximize2, Heart, Share2, Camera, MapPin, Sparkles, Video, Play, Eye, Film, Plus, ExternalLink, Trash2, Lock, Unlock, Shield, FolderOpen } from 'lucide-react';
 import { GradientWaves } from './GradientWaves';
+import { extractGoogleDriveId, isGoogleDriveUrl } from '../utils/googleDrive';
+import { getVideoBlob, deleteVideoBlob } from '../utils/videoStorage';
+import { AddGoogleDriveVideoModal } from './AddGoogleDriveVideoModal';
+import { AdminAuthModal } from './AdminAuthModal';
 
 interface VideoGalleryPageProps {
   onClose: () => void;
@@ -12,7 +16,7 @@ export interface VideoGalleryItem {
   title: string;
   category: string;
   url: string; // Poster image
-  videoUrl: string; // MP4 stream
+  videoUrl: string; // MP4 stream, object URL, or Google Drive URL
   caption: string;
   location: string;
   camera: string;
@@ -24,11 +28,33 @@ export interface VideoGalleryItem {
   duration: string;
   views: number;
   likes: number;
+  isCustom?: boolean;
+  isGalleryUpload?: boolean;
+  videoFileName?: string;
+  videoFileSize?: string;
 }
 
 // 16 Curated Videography Works structured into 4 columns matching the reference image layout
 export const videoGalleryItems: VideoGalleryItem[] = [
   // COLUMN 1
+  {
+    id: "vgal-drive-featured",
+    title: "Cinematic Horizons Reel (Google Drive)",
+    category: "Cinematic Reels",
+    url: "https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&q=80&w=800",
+    videoUrl: "https://drive.google.com/file/d/1wN-76uOqA9mB5YxX3_7C3U2cZ4j9L1vP/preview",
+    caption: "Cinematic drone sweep and horizon perspective streamed live via Google Drive preview integration.",
+    location: "Kerala Coastline",
+    camera: "Sony FX3",
+    lens: "35mm T1.5 Anamorphic",
+    settings: "4K 60fps • S-Log3",
+    year: "2026 Film",
+    column: 1,
+    aspectRatioClass: "aspect-[16/9]",
+    duration: "0:45",
+    views: 18400,
+    likes: 2150
+  },
   {
     id: "vgal-1-1",
     title: "Tokyo Neon Streets & Midnight Drift",
@@ -325,13 +351,100 @@ export const videoGalleryItems: VideoGalleryItem[] = [
   }
 ];
 
-const videoCategories = ['ALL', 'CINEMATIC REELS', 'DRONE & FPV', 'COMMERCIAL', 'MOTION & VFX', 'DOCUMENTARY'];
+const videoCategories = ['ALL', 'GALLERY UPLOADS', 'GOOGLE DRIVE', 'CINEMATIC REELS', 'DRONE & FPV', 'COMMERCIAL', 'MOTION & VFX', 'DOCUMENTARY'];
+
+const STORAGE_KEY = 'mushfiq_custom_drive_videos';
 
 export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [animKey, setAnimKey] = useState<number>(0);
   const [activeVideo, setActiveVideo] = useState<VideoGalleryItem | null>(null);
   const [likedVideos, setLikedVideos] = useState<Record<string, boolean>>({});
+  const [showAddModal, setShowAddModal] = useState<boolean>(false);
+  const [showAdminModal, setShowAdminModal] = useState<boolean>(false);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('mushfiq_videography_admin_session') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  // Load custom user-added videos from localStorage
+  const [customVideos, setCustomVideos] = useState<VideoGalleryItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.map((item: any) => ({ ...item, isCustom: true }));
+        }
+      }
+    } catch {
+      // fallback
+    }
+    return [];
+  });
+
+  // Rehydrate video URLs for items stored in IndexedDB (gallery uploads)
+  useEffect(() => {
+    let isCancelled = false;
+    const restoreBlobs = async () => {
+      let hasUpdates = false;
+      const updated = await Promise.all(
+        customVideos.map(async (v) => {
+          if (v.isGalleryUpload && (!v.videoUrl || v.videoUrl.startsWith('blob:'))) {
+            try {
+              const blob = await getVideoBlob(v.id);
+              if (blob && !isCancelled) {
+                hasUpdates = true;
+                return { ...v, videoUrl: URL.createObjectURL(blob) };
+              }
+            } catch (err) {
+              console.warn('Failed restoring video blob for', v.id, err);
+            }
+          }
+          return v;
+        })
+      );
+      if (hasUpdates && !isCancelled) {
+        setCustomVideos(updated);
+      }
+    };
+    restoreBlobs();
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  const handleAddVideo = (newVideo: VideoGalleryItem) => {
+    const videoWithCustom: VideoGalleryItem = { ...newVideo, isCustom: true };
+    const updated = [videoWithCustom, ...customVideos];
+    setCustomVideos(updated);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    } catch (e) {
+      console.error('Failed to save to localStorage', e);
+    }
+    // Instantly open the newly added video so the user previews it immediately!
+    setActiveVideo(videoWithCustom);
+    setShowAddModal(false);
+  };
+
+  const handleDeleteCustomVideo = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = customVideos.filter((v) => v.id !== id);
+    setCustomVideos(updated);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      await deleteVideoBlob(id);
+    } catch (e) {
+      console.error('Failed to delete video', e);
+    }
+    if (activeVideo?.id === id) {
+      setActiveVideo(null);
+    }
+  };
 
   const handleCategoryClick = (cat: string) => {
     setSelectedCategory(cat);
@@ -352,7 +465,11 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (activeVideo) {
+        if (showAdminModal) {
+          setShowAdminModal(false);
+        } else if (showAddModal) {
+          setShowAddModal(false);
+        } else if (activeVideo) {
           setActiveVideo(null);
         } else {
           onClose();
@@ -361,7 +478,7 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
     };
 
     const handleWheel = (e: WheelEvent) => {
-      if (activeVideo) return;
+      if (activeVideo || showAddModal || showAdminModal) return;
       if (containerRef.current) {
         containerRef.current.scrollTop += e.deltaY;
       }
@@ -374,16 +491,24 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('wheel', handleWheel);
     };
-  }, [activeVideo, onClose]);
+  }, [activeVideo, showAddModal, showAdminModal, onClose]);
 
   const toggleLike = (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
     setLikedVideos((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const filteredVideos = selectedCategory === 'ALL'
-    ? videoGalleryItems
-    : videoGalleryItems.filter((v) => v.category.toUpperCase() === selectedCategory.toUpperCase());
+  // Combine custom user videos with base curated catalog
+  const allVideos: VideoGalleryItem[] = [...customVideos, ...videoGalleryItems];
+
+  const filteredVideos = allVideos.filter((v) => {
+    if (selectedCategory === 'ALL') return true;
+    if (selectedCategory === 'GALLERY UPLOADS') return Boolean(v.isGalleryUpload);
+    if (selectedCategory === 'GOOGLE DRIVE') return isGoogleDriveUrl(v.videoUrl);
+    return v.category.toUpperCase() === selectedCategory.toUpperCase();
+  });
+
+  const totalDriveVideos = allVideos.filter((v) => isGoogleDriveUrl(v.videoUrl)).length;
 
   return (
     <motion.div
@@ -420,7 +545,15 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
         </div>
 
         {/* Center: Video Category Filters */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 no-scrollbar">
+        <div
+          data-lenis-prevent="true"
+          onWheel={(e) => {
+            if (e.deltaY !== 0) {
+              e.currentTarget.scrollLeft += e.deltaY;
+            }
+          }}
+          className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 no-scrollbar overscroll-contain"
+        >
           {videoCategories.map((cat) => (
             <button
               key={cat}
@@ -437,9 +570,20 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
           ))}
         </div>
 
-        {/* Right: Counter & Close */}
+        {/* Right: Admin Status (if authenticated), Counter & Close */}
         <div className="flex items-center justify-end gap-3 text-xs font-mono text-neutral-500">
-          <span className="hidden lg:inline">{filteredVideos.length} REELS ARCHIVED</span>
+          {isAdminAuthenticated && (
+            <button
+              onClick={() => setShowAdminModal(true)}
+              className="px-3 py-1.5 rounded-full bg-blue-600/20 border border-blue-500/40 text-blue-400 hover:text-white hover:bg-blue-600 text-[11px] font-mono font-bold uppercase tracking-wider transition-all duration-200 flex items-center gap-1.5 shadow-sm hover:scale-105 active:scale-95 cursor-pointer whitespace-nowrap"
+              title="Open Admin Control"
+            >
+              <Unlock className="w-3 h-3" />
+              <span>ADMIN ACTIVE</span>
+            </button>
+          )}
+
+          <span className="hidden lg:inline">{filteredVideos.length} REELS</span>
           <button
             onClick={onClose}
             className="p-2 rounded-full bg-neutral-900 text-neutral-300 hover:bg-[#2563EB] hover:text-white transition-colors cursor-pointer"
@@ -452,8 +596,33 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
       </header>
 
       {/* Main Grid Area - Matching the exact 4-column layout of reference image */}
-      <main className="max-w-[1440px] mx-auto px-3 sm:px-6 md:px-10 py-8 sm:py-12">
+      <main className="max-w-[1440px] mx-auto px-3 sm:px-6 md:px-10 py-6 sm:py-10">
         
+        {/* Admin Bar (Only visible when authenticated) */}
+        {isAdminAuthenticated && (
+          <div className="mb-6 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-blue-950/30 via-neutral-900 to-neutral-900 border border-blue-800/40 backdrop-blur-md transition-all shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">
+            <div className="flex items-center gap-2.5 text-blue-300">
+              <Shield className="w-4 h-4 text-blue-400 flex-shrink-0" />
+              <span>Owner Admin Mode Active • Google Drive Videography Access</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-[#2563EB] hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Add Drive Video</span>
+              </button>
+              <button
+                onClick={() => setShowAdminModal(true)}
+                className="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white text-xs transition-all cursor-pointer"
+              >
+                Admin Hub
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Dark Framed Grid Container */}
         <div className="bg-[#080808] p-2 sm:p-4 rounded-xl">
           
@@ -495,6 +664,19 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
                             className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500 ease-out"
                           />
 
+                          {/* Top Left: Video Source Badge */}
+                          {item.isGalleryUpload ? (
+                            <div className="absolute top-3 left-3 z-10 px-2 py-0.5 rounded-full bg-emerald-600/90 backdrop-blur-md text-white text-[9px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 shadow-md border border-emerald-400/30">
+                              <FolderOpen className="w-2.5 h-2.5" />
+                              <span>Gallery Reel</span>
+                            </div>
+                          ) : isGoogleDriveUrl(item.videoUrl) ? (
+                            <div className="absolute top-3 left-3 z-10 px-2 py-0.5 rounded-full bg-blue-600/90 backdrop-blur-md text-white text-[9px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 shadow-md border border-blue-400/30">
+                              <Video className="w-2.5 h-2.5" />
+                              <span>Drive Stream</span>
+                            </div>
+                          ) : null}
+
                           {/* Video Duration Badge Top Right */}
                           <div className="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md text-white text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 border border-white/20 shadow-md">
                             <Play className="w-3 h-3 fill-white text-white" />
@@ -508,16 +690,27 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
                                 <Video className="w-3 h-3 text-white" />
                                 <span>{item.category}</span>
                               </span>
-                              <button
-                                onClick={(e) => toggleLike(item.id, e)}
-                                className={`p-2 rounded-full backdrop-blur-md transition-all ${
-                                  isLiked
-                                    ? 'bg-[#2563EB] text-white'
-                                    : 'bg-black/50 text-white hover:bg-[#2563EB]'
-                                }`}
-                              >
-                                <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-white' : ''}`} />
-                              </button>
+                              <div className="flex items-center gap-1.5">
+                                {item.isCustom && isAdminAuthenticated && (
+                                  <button
+                                    onClick={(e) => handleDeleteCustomVideo(item.id, e)}
+                                    className="p-2 rounded-full bg-red-600/70 hover:bg-red-600 text-white backdrop-blur-md transition-all cursor-pointer"
+                                    title="Delete Video"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={(e) => toggleLike(item.id, e)}
+                                  className={`p-2 rounded-full backdrop-blur-md transition-all cursor-pointer ${
+                                    isLiked
+                                      ? 'bg-[#2563EB] text-white'
+                                      : 'bg-black/50 text-white hover:bg-[#2563EB]'
+                                  }`}
+                                >
+                                  <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-white' : ''}`} />
+                                </button>
+                              </div>
                             </div>
 
                             {/* Center Play Button Icon on Hover */}
@@ -559,122 +752,213 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
 
       </main>
 
+      {/* Footer of Videography Gallery with Admin Access Icon */}
+      <footer className="mt-12 sm:mt-16 border-t border-neutral-900/90 bg-[#060608]/80 backdrop-blur-md py-6 sm:py-8 px-4 sm:px-8">
+        <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-neutral-500">
+          <div className="flex items-center gap-3">
+            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+            <span className="tracking-wider uppercase text-[11px] text-neutral-400">
+              MUSHFIQ ARCHIVE • CINEMATIC & COMMERCIAL VIDEOGRAPHY
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <span className="text-[11px]">{filteredVideos.length} REELS AVAILABLE</span>
+            <span className="text-neutral-800">|</span>
+
+            {/* Admin Lock / Google Drive Management Icon in Footer */}
+            <button
+              onClick={() => setShowAdminModal(true)}
+              className="group relative flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-neutral-900/90 hover:bg-neutral-800 text-neutral-400 hover:text-white border border-neutral-800/80 hover:border-blue-500/50 transition-all duration-200 cursor-pointer shadow-sm hover:scale-105 active:scale-95"
+              title={isAdminAuthenticated ? "Owner Admin Active • Manage Google Drive Videos" : "Owner Admin Access (Requires ID & Password)"}
+              aria-label="Admin Access"
+            >
+              {isAdminAuthenticated ? (
+                <>
+                  <Unlock className="w-3.5 h-3.5 text-blue-400 group-hover:text-blue-300 transition-colors" />
+                  <span className="text-[11px] font-bold text-blue-400 tracking-wider">ADMIN MODE</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
+                </>
+              ) : (
+                <>
+                  <Lock className="w-3.5 h-3.5 text-neutral-500 group-hover:text-blue-400 transition-colors" />
+                  <span className="text-[11px] tracking-wider text-neutral-400 group-hover:text-white">ADMIN</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </footer>
+
       {/* Lightbox Inspector Overlay when a video item card is clicked */}
       <AnimatePresence>
-        {activeVideo && (
-          <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-6 md:p-10">
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setActiveVideo(null)}
-              className="fixed inset-0 bg-black/95 backdrop-blur-2xl"
-            />
+        {activeVideo && (() => {
+          const driveId = extractGoogleDriveId(activeVideo.videoUrl);
 
-            {/* Modal Container */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.94 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.94 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="relative max-w-5xl w-full max-h-[90vh] bg-neutral-900 border border-neutral-800 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl z-10 flex flex-col lg:flex-row my-auto text-white"
-            >
-              {/* HTML5 Video Player View */}
-              <div className="relative flex-1 bg-black flex items-center justify-center p-3 sm:p-4 min-h-[320px] lg:min-h-[520px]">
-                <video
-                  src={activeVideo.videoUrl}
-                  poster={activeVideo.url}
-                  controls
-                  autoPlay
-                  loop
-                  playsInline
-                  className="max-h-[75vh] w-auto max-w-full rounded-lg object-contain shadow-2xl"
-                />
+          return (
+            <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-6 md:p-10">
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setActiveVideo(null)}
+                className="fixed inset-0 bg-black/95 backdrop-blur-2xl"
+              />
 
-                {/* Close Overlay Icon Mobile */}
-                <button
-                  onClick={() => setActiveVideo(null)}
-                  className="absolute top-4 right-4 p-2.5 rounded-full bg-black/60 hover:bg-[#2563EB] text-white backdrop-blur-md transition-colors cursor-pointer lg:hidden z-20"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Sidebar Video Details */}
-              <div className="w-full lg:w-80 p-6 lg:p-8 bg-neutral-900 border-t lg:border-t-0 lg:border-l border-neutral-800 flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <span className="px-2.5 py-1 rounded-full bg-[#2563EB]/20 border border-[#2563EB]/40 text-[#2563EB] text-xs font-mono font-bold uppercase flex items-center gap-1.5 w-fit">
-                        <Video className="w-3.5 h-3.5 text-[#2563EB]" />
-                        <span>{activeVideo.category}</span>
-                      </span>
-                      <h2 className="text-xl font-bold font-mono text-white mt-3 leading-tight">
-                        {activeVideo.title}
-                      </h2>
+              {/* Modal Container */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.94 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.94 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                className="relative max-w-5xl w-full max-h-[90vh] bg-neutral-900 border border-neutral-800 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl z-10 flex flex-col lg:flex-row my-auto text-white"
+              >
+                {/* Video Player Viewport */}
+                <div className="relative flex-1 bg-black flex items-center justify-center p-2 sm:p-4 min-h-[340px] lg:min-h-[520px]">
+                  {driveId ? (
+                    <div className="relative w-full h-full min-h-[340px] lg:min-h-[520px] flex items-center justify-center bg-black">
+                      <iframe
+                        src={`https://drive.google.com/file/d/${driveId}/preview`}
+                        className="w-full h-full min-h-[340px] lg:min-h-[520px] rounded-lg border-0 bg-black shadow-2xl"
+                        allow="autoplay; fullscreen"
+                        allowFullScreen
+                        title={activeVideo.title}
+                      />
                     </div>
+                  ) : (
+                    <video
+                      src={activeVideo.videoUrl}
+                      poster={activeVideo.url}
+                      controls
+                      autoPlay
+                      loop
+                      playsInline
+                      className="max-h-[75vh] w-auto max-w-full rounded-lg object-contain shadow-2xl"
+                    />
+                  )}
 
-                    <button
-                      onClick={() => setActiveVideo(null)}
-                      className="hidden lg:flex p-2 rounded-full hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors cursor-pointer"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-
-                  <p className="text-xs sm:text-sm text-neutral-300 font-light leading-relaxed mb-6">
-                    "{activeVideo.caption}"
-                  </p>
-
-                  <div className="space-y-3 pt-4 border-t border-neutral-800 text-xs font-mono text-neutral-400">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-[#2563EB]" />
-                      <span>{activeVideo.location}</span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Camera className="w-4 h-4 text-[#2563EB]" />
-                      <span>{activeVideo.camera} • {activeVideo.lens}</span>
-                    </div>
-
-                    <div className="text-[11px] text-neutral-500 pl-6">
-                      {activeVideo.settings}
-                    </div>
-
-                    <div className="flex items-center gap-2 text-[11px] text-neutral-400 pt-1">
-                      <Eye className="w-3.5 h-3.5 text-[#2563EB]" />
-                      <span>{activeVideo.views.toLocaleString()} VIEWS • {activeVideo.duration}</span>
-                    </div>
-
-                    <div className="pt-2 text-[11px] text-neutral-500">
-                      {activeVideo.year}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-8 pt-4 border-t border-neutral-800 flex items-center justify-between">
+                  {/* Close Overlay Icon Mobile */}
                   <button
-                    onClick={(e) => toggleLike(activeVideo.id, e)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-mono font-bold transition-colors cursor-pointer ${
-                      likedVideos[activeVideo.id]
-                        ? 'bg-[#2563EB] text-white'
-                        : 'bg-neutral-800 text-neutral-200 hover:bg-neutral-700'
-                    }`}
+                    onClick={() => setActiveVideo(null)}
+                    className="absolute top-4 right-4 p-2.5 rounded-full bg-black/60 hover:bg-[#2563EB] text-white backdrop-blur-md transition-colors cursor-pointer lg:hidden z-20"
                   >
-                    <Heart className={`w-4 h-4 ${likedVideos[activeVideo.id] ? 'fill-white' : ''}`} />
-                    <span>{likedVideos[activeVideo.id] ? 'LIKED' : 'LIKE'}</span>
+                    <X className="w-5 h-5" />
                   </button>
-
-                  <span className="text-[10px] font-mono text-neutral-500">
-                    MUSHFIQ ARCHIVE
-                  </span>
                 </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
+
+                {/* Sidebar Video Details */}
+                <div className="w-full lg:w-80 p-6 lg:p-8 bg-neutral-900 border-t lg:border-t-0 lg:border-l border-neutral-800 flex flex-col justify-between">
+                  <div>
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <span className="px-2.5 py-1 rounded-full bg-[#2563EB]/20 border border-[#2563EB]/40 text-[#2563EB] text-xs font-mono font-bold uppercase flex items-center gap-1.5 w-fit">
+                          <Video className="w-3.5 h-3.5 text-[#2563EB]" />
+                          <span>{activeVideo.category}</span>
+                        </span>
+                        <h2 className="text-xl font-bold font-mono text-white mt-3 leading-tight">
+                          {activeVideo.title}
+                        </h2>
+                      </div>
+
+                      <button
+                        onClick={() => setActiveVideo(null)}
+                        className="hidden lg:flex p-2 rounded-full hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    {driveId && (
+                      <div className="mb-4 p-2.5 rounded-xl bg-[#2563EB]/15 border border-[#2563EB]/35 flex items-center justify-between">
+                        <span className="text-[11px] font-mono text-blue-300 flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                          Drive Preview
+                        </span>
+                        <a
+                          href={`https://drive.google.com/file/d/${driveId}/view`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] font-mono text-blue-400 hover:text-white underline flex items-center gap-1"
+                        >
+                          Open in Drive <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    )}
+
+                    <p className="text-xs sm:text-sm text-neutral-300 font-light leading-relaxed mb-6">
+                      "{activeVideo.caption}"
+                    </p>
+
+                    <div className="space-y-3 pt-4 border-t border-neutral-800 text-xs font-mono text-neutral-400">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-[#2563EB]" />
+                        <span>{activeVideo.location}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Camera className="w-4 h-4 text-[#2563EB]" />
+                        <span>{activeVideo.camera} • {activeVideo.lens}</span>
+                      </div>
+
+                      <div className="text-[11px] text-neutral-500 pl-6">
+                        {activeVideo.settings}
+                      </div>
+
+                      <div className="flex items-center gap-2 text-[11px] text-neutral-400 pt-1">
+                        <Eye className="w-3.5 h-3.5 text-[#2563EB]" />
+                        <span>{activeVideo.views.toLocaleString()} VIEWS • {activeVideo.duration}</span>
+                      </div>
+
+                      <div className="pt-2 text-[11px] text-neutral-500">
+                        {activeVideo.year}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-8 pt-4 border-t border-neutral-800 flex items-center justify-between">
+                    <button
+                      onClick={(e) => toggleLike(activeVideo.id, e)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-mono font-bold transition-colors cursor-pointer ${
+                        likedVideos[activeVideo.id]
+                          ? 'bg-[#2563EB] text-white'
+                          : 'bg-neutral-800 text-neutral-200 hover:bg-neutral-700'
+                      }`}
+                    >
+                      <Heart className={`w-4 h-4 ${likedVideos[activeVideo.id] ? 'fill-white' : ''}`} />
+                      <span>{likedVideos[activeVideo.id] ? 'LIKED' : 'LIKE'}</span>
+                    </button>
+
+                    <span className="text-[10px] font-mono text-neutral-500">
+                      MUSHFIQ ARCHIVE
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
       </AnimatePresence>
+
+      {/* Add Google Drive Video Modal */}
+      <AddGoogleDriveVideoModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onAddVideo={handleAddVideo}
+        existingCount={allVideos.length}
+      />
+
+      {/* Admin Authentication & Control Modal */}
+      <AdminAuthModal
+        isOpen={showAdminModal}
+        onClose={() => setShowAdminModal(false)}
+        onOpenAddVideoModal={() => setShowAddModal(true)}
+        customVideos={customVideos}
+        onDeleteCustomVideo={handleDeleteCustomVideo}
+        onSelectVideo={(v) => setActiveVideo(v)}
+        isAuthenticated={isAdminAuthenticated}
+        setIsAuthenticated={setIsAdminAuthenticated}
+      />
     </motion.div>
   );
 }

@@ -1,7 +1,8 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronLeft, ChevronRight, Video, MapPin, Calendar, Film, Eye, Heart, Volume2, VolumeX, Play, Pause, Maximize } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Video, MapPin, Calendar, Film, Eye, Heart, Volume2, VolumeX, Play, Pause, Maximize, ExternalLink, Sparkles } from 'lucide-react';
 import { VideoItem } from '../types';
+import { extractGoogleDriveId } from '../utils/googleDrive';
 
 interface VideoLightboxProps {
   video: VideoItem | null;
@@ -24,6 +25,7 @@ export function VideoLightbox({ video, videos, onClose, onSelectVideo }: VideoLi
   if (!video) return null;
 
   const currentIndex = videos.findIndex(v => v.id === video.id);
+  const googleDriveId = extractGoogleDriveId(video.videoUrl);
 
   const togglePlay = () => {
     if (videoRef.current) {
@@ -104,58 +106,72 @@ export function VideoLightbox({ video, videos, onClose, onSelectVideo }: VideoLi
         >
           {/* Main Video Viewport */}
           <div className="relative flex-1 bg-black flex flex-col items-center justify-center min-h-[350px] lg:min-h-[500px] group overflow-hidden">
-            <video
-              ref={videoRef}
-              src={video.videoUrl}
-              poster={video.posterUrl}
-              autoPlay
-              playsInline
-              loop
-              muted={isMuted}
-              onTimeUpdate={handleTimeUpdate}
-              onClick={togglePlay}
-              className="w-full h-full max-h-[75vh] object-contain cursor-pointer"
-            />
-
-            {/* Floating Overlay Controls on Video */}
-            <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-90 group-hover:opacity-100 transition-opacity flex flex-col gap-2">
-              {/* Progress Scrubber */}
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={progress}
-                onChange={handleSeek}
-                className="w-full h-1.5 bg-neutral-700 accent-[#2563EB] rounded-lg cursor-pointer"
-              />
-
-              <div className="flex items-center justify-between text-white text-xs font-mono pt-1">
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={togglePlay}
-                    className="p-1.5 rounded-full bg-white/10 hover:bg-[#2563EB] transition-colors"
-                  >
-                    {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
-                  </button>
-                  <button
-                    onClick={toggleMute}
-                    className="p-1.5 rounded-full bg-white/10 hover:bg-[#2563EB] transition-colors"
-                  >
-                    {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                  </button>
-                  <span className="text-neutral-400">{video.duration}</span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={toggleFullscreen}
-                    className="p-1.5 rounded-full bg-white/10 hover:bg-[#2563EB] transition-colors"
-                  >
-                    <Maximize className="w-4 h-4" />
-                  </button>
-                </div>
+            {googleDriveId ? (
+              <div className="relative w-full h-full min-h-[350px] lg:min-h-[500px] flex items-center justify-center bg-black">
+                <iframe
+                  src={`https://drive.google.com/file/d/${googleDriveId}/preview`}
+                  className="w-full h-full min-h-[350px] lg:min-h-[500px] border-0"
+                  allow="autoplay; fullscreen"
+                  allowFullScreen
+                  title={video.title}
+                />
               </div>
-            </div>
+            ) : (
+              <>
+                <video
+                  ref={videoRef}
+                  src={video.videoUrl}
+                  poster={video.posterUrl}
+                  autoPlay
+                  playsInline
+                  loop
+                  muted={isMuted}
+                  onTimeUpdate={handleTimeUpdate}
+                  onClick={togglePlay}
+                  className="w-full h-full max-h-[75vh] object-contain cursor-pointer"
+                />
+
+                {/* Floating Overlay Controls on Video */}
+                <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-90 group-hover:opacity-100 transition-opacity flex flex-col gap-2">
+                  {/* Progress Scrubber */}
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={progress}
+                    onChange={handleSeek}
+                    className="w-full h-1.5 bg-neutral-700 accent-[#2563EB] rounded-lg cursor-pointer"
+                  />
+
+                  <div className="flex items-center justify-between text-white text-xs font-mono pt-1">
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={togglePlay}
+                        className="p-1.5 rounded-full bg-white/10 hover:bg-[#2563EB] transition-colors"
+                      >
+                        {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
+                      </button>
+                      <button
+                        onClick={toggleMute}
+                        className="p-1.5 rounded-full bg-white/10 hover:bg-[#2563EB] transition-colors"
+                      >
+                        {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                      </button>
+                      <span className="text-neutral-400">{video.duration}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={toggleFullscreen}
+                        className="p-1.5 rounded-full bg-white/10 hover:bg-[#2563EB] transition-colors"
+                      >
+                        <Maximize className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Navigation Arrows */}
             <button
@@ -178,7 +194,7 @@ export function VideoLightbox({ video, videos, onClose, onSelectVideo }: VideoLi
           {/* Metadata Sidebar */}
           <div className="w-full lg:w-80 p-6 lg:p-8 bg-neutral-900 flex flex-col justify-between border-t lg:border-t-0 lg:border-l border-neutral-800 text-white">
             <div>
-              <div className="flex justify-between items-start mb-6">
+              <div className="flex justify-between items-start mb-4">
                 <div>
                   <span className="px-3 py-1 rounded-full bg-[#2563EB]/20 border border-[#2563EB]/30 text-[#2563EB] text-xs font-mono font-bold uppercase tracking-wider">
                     {video.category}
@@ -193,6 +209,23 @@ export function VideoLightbox({ video, videos, onClose, onSelectVideo }: VideoLi
                   <X className="w-5 h-5" />
                 </button>
               </div>
+
+              {googleDriveId && (
+                <div className="mb-4 p-2.5 rounded-xl bg-[#2563EB]/15 border border-[#2563EB]/30 flex items-center justify-between">
+                  <span className="text-[11px] font-mono text-blue-300 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                    Google Drive Stream
+                  </span>
+                  <a
+                    href={`https://drive.google.com/file/d/${googleDriveId}/view`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] font-mono text-blue-400 hover:text-white underline flex items-center gap-1"
+                  >
+                    Open Drive <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              )}
 
               <p className="text-sm text-neutral-300 font-light leading-relaxed mb-6">
                 "{video.caption}"
