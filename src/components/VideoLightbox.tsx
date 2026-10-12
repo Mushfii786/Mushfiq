@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronLeft, ChevronRight, Video, MapPin, Calendar, Film, Eye, Heart, Volume2, VolumeX, Play, Pause, Maximize, ExternalLink, Sparkles } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Download, Check } from 'lucide-react';
 import { VideoItem } from '../types';
 import { extractGoogleDriveId } from '../utils/googleDrive';
 
@@ -14,17 +14,42 @@ interface VideoLightboxProps {
 export function VideoLightbox({ video, videos, onClose, onSelectVideo }: VideoLightboxProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(true);
-  const [isMuted, setIsMuted] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [isMuted, setIsMuted] = useState(true);
+  const [downloading, setDownloading] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
 
   useEffect(() => {
     setIsPlaying(true);
-    setProgress(0);
+    if (videoRef.current) {
+      videoRef.current.play().catch(() => {});
+    }
   }, [video]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      } else if (e.key === 'ArrowLeft') {
+        if (!video || videos.length === 0) return;
+        const curIdx = videos.findIndex((v) => v.id === video.id);
+        const prevIdx = (curIdx - 1 + videos.length) % videos.length;
+        onSelectVideo(videos[prevIdx]);
+      } else if (e.key === 'ArrowRight') {
+        if (!video || videos.length === 0) return;
+        const curIdx = videos.findIndex((v) => v.id === video.id);
+        const nextIdx = (curIdx + 1) % videos.length;
+        onSelectVideo(videos[nextIdx]);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [video, videos, onClose, onSelectVideo]);
 
   if (!video) return null;
 
-  const currentIndex = videos.findIndex(v => v.id === video.id);
+  const currentIndex = videos.findIndex((v) => v.id === video.id);
   const googleDriveId = extractGoogleDriveId(video.videoUrl);
 
   const togglePlay = () => {
@@ -33,42 +58,20 @@ export function VideoLightbox({ video, videos, onClose, onSelectVideo }: VideoLi
         videoRef.current.pause();
         setIsPlaying(false);
       } else {
-        videoRef.current.play();
+        videoRef.current.play().catch(() => {});
         setIsPlaying(true);
       }
     }
   };
 
-  const toggleMute = () => {
-    if (videoRef.current) {
-      videoRef.current.muted = !isMuted;
-      setIsMuted(!isMuted);
-    }
-  };
-
-  const toggleFullscreen = () => {
-    if (videoRef.current) {
-      if (videoRef.current.requestFullscreen) {
-        videoRef.current.requestFullscreen();
+  const handleVideoMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const vid = e.currentTarget;
+    if (vid.videoWidth && vid.videoHeight) {
+      if (vid.videoWidth > vid.videoHeight * 1.1) {
+        setIsLandscape(true);
+      } else {
+        setIsLandscape(false);
       }
-    }
-  };
-
-  const handleTimeUpdate = () => {
-    if (videoRef.current) {
-      const current = videoRef.current.currentTime;
-      const duration = videoRef.current.duration;
-      if (duration > 0) {
-        setProgress((current / duration) * 100);
-      }
-    }
-  };
-
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseFloat(e.target.value);
-    if (videoRef.current && videoRef.current.duration) {
-      videoRef.current.currentTime = (val / 100) * videoRef.current.duration;
-      setProgress(val);
     }
   };
 
@@ -84,40 +87,116 @@ export function VideoLightbox({ video, videos, onClose, onSelectVideo }: VideoLi
     onSelectVideo(videos[nextIdx]);
   };
 
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDownloading(true);
+    try {
+      if (googleDriveId) {
+        window.open(`https://drive.google.com/uc?export=download&id=${googleDriveId}`, '_blank');
+      } else {
+        const response = await fetch(video.videoUrl);
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = `${video.title.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'video'}.mp4`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+      }
+    } catch {
+      const link = document.createElement('a');
+      link.href = video.videoUrl;
+      link.download = `${video.title || 'video'}.mp4`;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+    setTimeout(() => setDownloading(false), 1500);
+  };
+
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 select-none">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 bg-neutral-950/92 backdrop-blur-xl"
+          className="fixed inset-0 bg-neutral-950/75 backdrop-blur-md"
         />
 
-        {/* Content Box */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.92 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.92 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 280 }}
-          className="relative max-w-5xl w-full max-h-[90vh] flex flex-col lg:flex-row bg-neutral-900 border border-neutral-800 rounded-3xl overflow-hidden shadow-2xl z-10 my-auto"
+        {/* Outer Navigation Arrows */}
+        <button
+          onClick={handlePrev}
+          className="hidden md:flex absolute left-8 lg:left-16 z-20 p-3.5 rounded-full bg-white/10 hover:bg-white text-white hover:text-black hover:scale-110 active:scale-95 transition-all duration-200 backdrop-blur-md cursor-pointer border border-white/10"
+          aria-label="Previous video"
         >
-          {/* Main Video Viewport */}
-          <div className="relative flex-1 bg-black flex flex-col items-center justify-center min-h-[350px] lg:min-h-[500px] group overflow-hidden">
-            {googleDriveId ? (
-              <div className="relative w-full h-full min-h-[350px] lg:min-h-[500px] flex items-center justify-center bg-black">
+          <ChevronLeft className="w-6 h-6" />
+        </button>
+
+        <button
+          onClick={handleNext}
+          className="hidden md:flex absolute right-8 lg:right-16 z-20 p-3.5 rounded-full bg-white/10 hover:bg-white text-white hover:text-black hover:scale-110 active:scale-95 transition-all duration-200 backdrop-blur-md cursor-pointer border border-white/10"
+          aria-label="Next video"
+        >
+          <ChevronRight className="w-6 h-6" />
+        </button>
+
+        {/* Modal Card matching exact reference image layout */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.92, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.92, y: 20 }}
+          transition={{ type: 'spring', damping: 26, stiffness: 320 }}
+          className={`relative ${
+            isLandscape ? 'max-w-[760px]' : 'max-w-[460px] sm:max-w-[500px]'
+          } w-full bg-[#121316]/95 border border-white/15 rounded-[32px] sm:rounded-[36px] p-4 sm:p-5 shadow-[0_25px_70px_rgba(0,0,0,0.9),0_0_35px_rgba(37,99,235,0.15)] backdrop-blur-2xl z-10 flex flex-col my-auto text-white`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 z-30 p-2 rounded-full bg-black/80 hover:bg-white text-white hover:text-black hover:scale-110 active:scale-90 transition-all duration-200 shadow-lg cursor-pointer backdrop-blur-md border border-white/15"
+            aria-label="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
+
+          {/* Inner Frame */}
+          <div
+            className={`relative w-full ${
+              isLandscape
+                ? 'aspect-video min-h-[300px] sm:min-h-[420px]'
+                : 'h-[380px] sm:h-[460px] md:h-[500px]'
+            } bg-[#181920] border border-white/10 rounded-[24px] overflow-hidden flex items-center justify-center shadow-inner group`}
+          >
+            {/* Ambient Blurred Background from Video Poster */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <img
+                src={video.posterUrl}
+                alt=""
+                aria-hidden="true"
+                className="w-full h-full object-cover blur-2xl scale-125 opacity-35 select-none"
+              />
+              <div className="absolute inset-0 bg-neutral-950/40" />
+            </div>
+
+            {/* Main Video Viewport - Fitted to Height */}
+            <div className="relative z-10 w-full h-full flex items-center justify-center p-2 rounded-[20px] overflow-hidden">
+              {googleDriveId ? (
                 <iframe
                   src={`https://drive.google.com/file/d/${googleDriveId}/preview`}
-                  className="w-full h-full min-h-[350px] lg:min-h-[500px] border-0"
+                  className="h-full w-full max-w-full rounded-[18px] border-0 bg-black shadow-2xl"
                   allow="autoplay; fullscreen"
                   allowFullScreen
                   title={video.title}
                 />
-              </div>
-            ) : (
-              <>
+              ) : (
                 <video
                   ref={videoRef}
                   src={video.videoUrl}
@@ -126,154 +205,41 @@ export function VideoLightbox({ video, videos, onClose, onSelectVideo }: VideoLi
                   playsInline
                   loop
                   muted={isMuted}
-                  onTimeUpdate={handleTimeUpdate}
+                  onLoadedMetadata={handleVideoMetadata}
                   onClick={togglePlay}
-                  className="w-full h-full max-h-[75vh] object-contain cursor-pointer"
+                  className="h-full w-auto max-w-full object-contain rounded-[18px] select-none block shadow-2xl cursor-pointer"
                 />
+              )}
+            </div>
 
-                {/* Floating Overlay Controls on Video */}
-                <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-90 group-hover:opacity-100 transition-opacity flex flex-col gap-2">
-                  {/* Progress Scrubber */}
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={progress}
-                    onChange={handleSeek}
-                    className="w-full h-1.5 bg-neutral-700 accent-[#2563EB] rounded-lg cursor-pointer"
-                  />
-
-                  <div className="flex items-center justify-between text-white text-xs font-mono pt-1">
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={togglePlay}
-                        className="p-1.5 rounded-full bg-white/10 hover:bg-[#2563EB] transition-colors"
-                      >
-                        {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
-                      </button>
-                      <button
-                        onClick={toggleMute}
-                        className="p-1.5 rounded-full bg-white/10 hover:bg-[#2563EB] transition-colors"
-                      >
-                        {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                      </button>
-                      <span className="text-neutral-400">{video.duration}</span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={toggleFullscreen}
-                        className="p-1.5 rounded-full bg-white/10 hover:bg-[#2563EB] transition-colors"
-                      >
-                        <Maximize className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Navigation Arrows */}
+            {/* Premium Download Pill Button matching exact reference image */}
             <button
-              onClick={handlePrev}
-              className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/60 hover:bg-[#2563EB] text-white hover:scale-110 active:scale-90 transition-all duration-200 backdrop-blur-md cursor-pointer z-20"
-              aria-label="Previous video"
+              onClick={handleDownload}
+              title="Download video"
+              className="absolute bottom-3.5 right-3.5 z-20 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-black/80 hover:bg-white text-neutral-200 hover:text-black border border-white/15 backdrop-blur-md text-xs font-sans font-medium transition-all duration-200 shadow-lg active:scale-95 cursor-pointer group"
             >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-
-            <button
-              onClick={handleNext}
-              className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/60 hover:bg-[#2563EB] text-white hover:scale-110 active:scale-90 transition-all duration-200 backdrop-blur-md cursor-pointer z-20"
-              aria-label="Next video"
-            >
-              <ChevronRight className="w-5 h-5" />
+              {downloading ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400 stroke-[2.5]" />
+                  <span>Saved</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-3.5 h-3.5 transition-transform duration-200 group-hover:-translate-y-0.5" />
+                  <span>Download</span>
+                </>
+              )}
             </button>
           </div>
 
-          {/* Metadata Sidebar */}
-          <div className="w-full lg:w-80 p-6 lg:p-8 bg-neutral-900 flex flex-col justify-between border-t lg:border-t-0 lg:border-l border-neutral-800 text-white">
-            <div>
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <span className="px-3 py-1 rounded-full bg-[#2563EB]/20 border border-[#2563EB]/30 text-[#2563EB] text-xs font-mono font-bold uppercase tracking-wider">
-                    {video.category}
-                  </span>
-                  <h3 className="text-2xl font-bold text-white mt-3 font-mono leading-tight">{video.title}</h3>
-                </div>
-
-                <button
-                  onClick={onClose}
-                  className="p-2 rounded-full hover:bg-neutral-800 text-neutral-400 hover:text-white hover:scale-110 active:scale-90 transition-all duration-200 cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {googleDriveId && (
-                <div className="mb-4 p-2.5 rounded-xl bg-[#2563EB]/15 border border-[#2563EB]/30 flex items-center justify-between">
-                  <span className="text-[11px] font-mono text-blue-300 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-                    Google Drive Stream
-                  </span>
-                  <a
-                    href={`https://drive.google.com/file/d/${googleDriveId}/view`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[11px] font-mono text-blue-400 hover:text-white underline flex items-center gap-1"
-                  >
-                    Open Drive <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-              )}
-
-              <p className="text-sm text-neutral-300 font-light leading-relaxed mb-6">
-                "{video.caption}"
-              </p>
-
-              {/* Video Equipment & Specs */}
-              <div className="space-y-4 pt-6 border-t border-neutral-800 text-xs text-neutral-400 font-mono">
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-[#2563EB]" />
-                  <span>{video.location}</span>
-                </div>
-
-                {video.camera && (
-                  <div className="flex items-center gap-2">
-                    <Video className="w-4 h-4 text-[#2563EB]" />
-                    <span>{video.camera} • {video.lens}</span>
-                  </div>
-                )}
-
-                {video.settings && (
-                  <div className="flex items-center gap-2">
-                    <Film className="w-4 h-4 text-[#2563EB]" />
-                    <span>{video.settings}</span>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-[#2563EB]" />
-                  <span>Released {video.year}</span>
-                </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-neutral-800/80 text-xs text-neutral-400">
-                  <div className="flex items-center gap-1.5">
-                    <Eye className="w-3.5 h-3.5 text-neutral-500" />
-                    <span>{video.views.toLocaleString()} views</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-[#2563EB] font-semibold">
-                    <Heart className="w-3.5 h-3.5 fill-[#2563EB]" />
-                    <span>{video.likes.toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-8 text-xs font-mono text-neutral-500 flex justify-between">
-              <span>Reel {currentIndex + 1} of {videos.length}</span>
-              <span>Muhammed Mushfiq</span>
-            </div>
+          {/* Bottom Bar: Title & Location/Subtitle (Centered) matching exact reference image */}
+          <div className="mt-4 px-2 text-center">
+            <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
+              {video.title}
+            </h3>
+            <p className="text-xs sm:text-sm text-neutral-400 font-medium mt-1 truncate">
+              {video.location}
+            </p>
           </div>
         </motion.div>
       </div>

@@ -3,7 +3,7 @@ import { motion, useScroll, useTransform } from 'motion/react';
 import { AnimatedBackground } from './hero/AnimatedBackground';
 import { GlassBadge } from './hero/GlassBadge';
 import { GradientText } from './hero/GradientText';
-import { HeroButtons } from './hero/HeroButtons';
+import { HeroDock } from './hero/HeroDock';
 import { CursorGlow } from './hero/CursorGlow';
 import { siteConfig } from '../config/site';
 
@@ -94,17 +94,14 @@ export function Hero() {
 
         {/* Subtitle Introduction */}
         <motion.div variants={lineVariants} className="max-w-[680px] mx-auto px-2">
-          <p className="text-sm sm:text-base md:text-lg text-white/70 font-light leading-relaxed tracking-wide">
+          <p className="text-sm sm:text-base md:text-lg text-white/70 font-light leading-relaxed tracking-wide font-sans">
             Hi, I'm <strong className="font-semibold text-white">Mushfiq</strong>. I transform ideas into cinematic visuals through video editing, photography, videography, photo editing, and creative design.
           </p>
         </motion.div>
 
-        {/* Interactive Action Buttons */}
-        <motion.div variants={lineVariants}>
-          <HeroButtons
-            primaryText="Explore My Work"
-            primaryHref="#projects"
-          />
+        {/* Interactive Hero Action Dock matching exact screenshot layout */}
+        <motion.div variants={lineVariants} className="w-full">
+          <HeroDock />
         </motion.div>
       </motion.div>
 
@@ -113,15 +110,15 @@ export function Hero() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 1.2, duration: 0.8 }}
-        className="absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2 pointer-events-none"
+        className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-1.5 pointer-events-none"
       >
-        <span className="text-[10px] font-mono tracking-widest text-white/40 uppercase">
+        <span className="text-[9px] sm:text-[10px] font-sans font-medium tracking-widest text-white/40 uppercase">
           SCROLL TO EXPLORE
         </span>
         <motion.div
-          animate={{ y: [0, 6, 0] }}
+          animate={{ y: [0, 5, 0] }}
           transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-          className="w-4 h-7 rounded-full border border-white/20 flex items-start justify-center p-1"
+          className="w-3.5 h-6 rounded-full border border-white/20 flex items-start justify-center p-1"
         >
           <div className="w-1 h-1.5 rounded-full bg-white/60" />
         </motion.div>

@@ -1,25 +1,77 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, Video, Lock } from 'lucide-react';
+import { ArrowRight, Video } from 'lucide-react';
 import { videography } from '../config/site';
 import { VideoItem } from '../types';
 import { VideoLightbox } from './VideoLightbox';
 import { VideoGalleryPage } from './VideoGalleryPage';
 import { CoverFlowGallery, CoverFlowItem } from './CoverFlowGallery';
 
-const videoCoverFlowData: CoverFlowItem[] = videography.map((v) => ({
-  id: v.id,
-  title: v.title,
-  subtitle: `${v.location} • ${v.year}`,
-  category: v.category,
-  url: v.posterUrl,
-  type: 'video',
-  data: v,
-}));
-
 export function Videography() {
   const [activeVideo, setActiveVideo] = useState<VideoItem | null>(null);
   const [showFullGallery, setShowFullGallery] = useState(false);
+  const [videoCoverFlowData, setVideoCoverFlowData] = useState<CoverFlowItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('mushfiq_custom_videos_catalog_v2');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.slice(0, 15).map((v: any) => ({
+            id: v.id,
+            title: v.title,
+            subtitle: v.caption ? v.caption : `${v.location || v.category || ''} ${v.year ? '• ' + v.year : ''}`.trim(),
+            category: v.category,
+            url: v.url || v.posterUrl,
+            type: 'video',
+            data: v,
+          }));
+        }
+      }
+    } catch (e) {}
+    return videography.map((v) => ({
+      id: v.id,
+      title: v.title,
+      subtitle: `${v.location} • ${v.year}`,
+      category: v.category,
+      url: v.posterUrl,
+      type: 'video',
+      data: v,
+    }));
+  });
+
+  useEffect(() => {
+    const handleOpenGallery = () => {
+      setShowFullGallery(true);
+    };
+    const handleSync = () => {
+      try {
+        const saved = localStorage.getItem('mushfiq_custom_videos_catalog_v2');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setVideoCoverFlowData(
+              parsed.slice(0, 15).map((v: any) => ({
+                id: v.id,
+                title: v.title,
+                subtitle: v.caption ? v.caption : `${v.location || v.category || ''} ${v.year ? '• ' + v.year : ''}`.trim(),
+                category: v.category,
+                url: v.url || v.posterUrl,
+                type: 'video',
+                data: v,
+              }))
+            );
+          }
+        }
+      } catch (e) {}
+    };
+
+    window.addEventListener('open-video-gallery', handleOpenGallery);
+    window.addEventListener('sync-custom-videos', handleSync);
+    return () => {
+      window.removeEventListener('open-video-gallery', handleOpenGallery);
+      window.removeEventListener('sync-custom-videos', handleSync);
+    };
+  }, []);
 
   return (
     <section id="videography" className="py-24 px-4 sm:px-6 max-w-7xl mx-auto relative overflow-hidden select-none border-t border-neutral-800/60">
@@ -35,7 +87,7 @@ export function Videography() {
           initial={{ opacity: 0, y: 10 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#2563EB]/10 border border-[#2563EB]/30 text-[#2563EB] text-xs font-mono font-bold tracking-widest uppercase hover:scale-105 transition-transform duration-200 cursor-default"
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#2563EB]/10 border border-[#2563EB]/30 text-[#2563EB] text-xs font-sans font-semibold tracking-wider uppercase hover:scale-105 transition-transform duration-200 cursor-default"
         >
           <Video className="w-3.5 h-3.5 text-[#2563EB]" />
           <span>CINEMATIC REELS</span>
@@ -65,7 +117,7 @@ export function Videography() {
         autoPlayInterval={5000}
       />
 
-      {/* Action Buttons: SEE MORE & Admin Access */}
+      {/* Action Buttons: SEE MORE VIDEOGRAPHY */}
       <div className="flex flex-wrap items-center justify-center gap-3 mt-8 sm:mt-10">
         <button
           onClick={() => {
@@ -82,19 +134,6 @@ export function Videography() {
           <div className="relative z-10 w-6 h-6 rounded-full bg-white/5 border border-white/10 group-hover:bg-[#2563EB] group-hover:border-[#2563EB] flex items-center justify-center transition-all duration-300">
             <ArrowRight className="w-3 h-3 text-blue-400 group-hover:text-white transition-transform duration-300 group-hover:translate-x-0.5" />
           </div>
-        </button>
-
-        {/* Quick Admin Access Button */}
-        <button
-          onClick={() => {
-            window.dispatchEvent(new CustomEvent('open-admin-panel'));
-          }}
-          className="group px-4 py-2.5 sm:py-3 rounded-full bg-neutral-950/80 hover:bg-neutral-900 text-neutral-400 hover:text-white border border-white/10 hover:border-blue-500/50 text-[11px] sm:text-xs font-mono font-bold tracking-wider uppercase transition-all duration-300 cursor-pointer shadow-md hover:scale-105 active:scale-95 inline-flex items-center gap-2 backdrop-blur-md"
-          title="Owner Admin Access (Id: Mushfii_786 | Pass: @Mushfii_786 | Shortcut: Alt+A)"
-          aria-label="Open Admin Panel"
-        >
-          <Lock className="w-3.5 h-3.5 text-neutral-400 group-hover:text-blue-400 transition-colors" />
-          <span>ADMIN</span>
         </button>
       </div>
 

@@ -796,12 +796,20 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
                 </div>
               </div>
             ) : (
-              filteredItems.map((item) => {
+              filteredItems.map((item, index) => {
                 return (
-                  <div
+                  <motion.div
                     key={item.id}
+                    initial={{ opacity: 0, y: 24 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: '-40px' }}
+                    transition={{
+                      duration: 0.5,
+                      delay: (index % 4) * 0.06,
+                      ease: [0.22, 1, 0.36, 1],
+                    }}
                     onClick={() => setActiveItem(item)}
-                    className="group relative flex flex-col p-1.5 pb-2 sm:p-3 sm:pb-4 rounded-[14px] sm:rounded-[24px] md:rounded-[28px] bg-[#111216]/95 border sm:border-2 border-[#2563EB]/70 hover:border-[#3B82F6] shadow-[0_6px_20px_rgba(0,0,0,0.7),0_0_12px_rgba(37,99,235,0.15)] hover:shadow-[0_16px_40px_rgba(0,0,0,0.9),0_0_30px_rgba(37,99,235,0.35)] transition-all duration-300 active:scale-[0.97] cursor-pointer animate-fadeIn"
+                    className="group relative flex flex-col p-1.5 pb-2 sm:p-3 sm:pb-4 rounded-[14px] sm:rounded-[24px] md:rounded-[28px] bg-[#111216]/95 border sm:border-2 border-[#2563EB]/70 hover:border-[#3B82F6] shadow-[0_6px_20px_rgba(0,0,0,0.7),0_0_12px_rgba(37,99,235,0.15)] hover:shadow-[0_16px_40px_rgba(0,0,0,0.9),0_0_30px_rgba(37,99,235,0.35)] transition-all duration-300 active:scale-[0.97] cursor-pointer"
                   >
                     {/* Image Container with Rounded Inside */}
                     <div className="relative w-full aspect-[4/5] rounded-[10px] sm:rounded-[18px] md:rounded-[20px] overflow-hidden bg-neutral-950 border border-neutral-800/60 shadow-inner">
@@ -823,7 +831,7 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
                         {item.clientOrEvent || item.category}
                       </p>
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })
             )}

@@ -336,25 +336,25 @@ export const polaroids: PolaroidPhoto[] = [
   {
     id: "pol-1",
     imageUrl: Night,
-    caption: "Riding into neon nights 🎡",
+    caption: "Riding into neon nights",
     rotation: -4,
   },
   {
     id: "pol-2",
     imageUrl: Dog,
-    caption: "Exploring one paw at a time 🐾",
+    caption: "Exploring one paw at a time",
     rotation: 3,
   },
   {
     id: "pol-3",
     imageUrl: FortKochi,
-    caption: "Where the clouds gather 🌤️",
+    caption: "Where the clouds gather",
     rotation: -2,
   },
   {
     id: "pol-4",
     imageUrl: Horse,
-    caption: "Ready for the next adventure 🐎",
+    caption: "Ready for the next adventure",
     rotation: 5,
   },
 ];

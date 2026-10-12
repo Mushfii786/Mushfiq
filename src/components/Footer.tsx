@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowUp, Instagram, Github, Linkedin, Mail, MessageCircle, Sparkles, Lock } from 'lucide-react';
+import { ArrowUp, Instagram, Github, Linkedin, Mail, MessageCircle, Sparkles } from 'lucide-react';
 import { siteConfig } from '../config/site';
 
 export function Footer() {
@@ -151,17 +151,6 @@ export function Footer() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Anywhere Admin Access Lock Button */}
-            <button
-              onClick={() => window.dispatchEvent(new CustomEvent('open-admin-panel'))}
-              className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-neutral-900/80 hover:bg-neutral-800 text-neutral-400 hover:text-white border border-white/10 hover:border-blue-500/40 text-[11px] font-mono transition-all duration-200 cursor-pointer shadow-sm hover:scale-105 active:scale-95"
-              title="Open Admin Panel (Id: Mushfii_786 | Pass: @Mushfii_786 | Shortcut: Alt+A)"
-              aria-label="Admin Access"
-            >
-              <Lock className="w-3 h-3 text-neutral-500 group-hover:text-blue-400 transition-colors" />
-              <span className="tracking-wider">ADMIN</span>
-            </button>
-
             {/* Premium Back to Top Button */}
             <motion.button
               onClick={scrollToTop}

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, X, Maximize2, Heart, Share2, Camera, MapPin, Sparkles, Video, Play, Eye, Film, Plus, ExternalLink, Trash2, Lock, Unlock, Shield, FolderOpen, Search } from 'lucide-react';
+import { ArrowLeft, ArrowRight, X, Maximize2, Heart, Share2, Camera, MapPin, Sparkles, Video, Play, Eye, Film, Plus, ExternalLink, Trash2, Lock, Unlock, Shield, Search, ChevronLeft, ChevronRight, Download, Check, CheckCircle2, Save, Edit3, Tag, RotateCcw, ArrowUp, ArrowDown, AlertTriangle, GripVertical, Upload, Move, MoreVertical } from 'lucide-react';
 import { GradientWaves } from './GradientWaves';
 import { extractGoogleDriveId, isGoogleDriveUrl } from '../utils/googleDrive';
-import { getVideoBlob, deleteVideoBlob } from '../utils/videoStorage';
+import { getVideoBlob, deleteVideoBlob, clearAllVideoBlobs } from '../utils/videoStorage';
 import { AddGoogleDriveVideoModal } from './AddGoogleDriveVideoModal';
 import { AdminAuthModal } from './AdminAuthModal';
+import { ThumbnailEditStudioModal } from './ThumbnailEditStudioModal';
 
 interface VideoGalleryPageProps {
   onClose: () => void;
@@ -54,24 +55,6 @@ export const videoGalleryItems: VideoGalleryItem[] = [
     duration: "0:45",
     views: 18400,
     likes: 2150
-  },
-  {
-    id: "vgal-1-1",
-    title: "Tokyo Neon Streets & Midnight Drift",
-    category: "Cinematic Reels",
-    url: "https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&q=80&w=800",
-    videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-tokyo-street-with-neon-lights-at-night-41541-large.mp4",
-    caption: "Night walkthrough through Shinjuku neon lanes featuring anamorphic lens flares and deep teal-orange color balance.",
-    location: "Tokyo, Japan",
-    camera: "Sony A7S III",
-    lens: "35mm T1.5 Anamorphic",
-    settings: "4K 60fps • S-Log3",
-    year: "2026 Film",
-    column: 1,
-    aspectRatioClass: "aspect-[3/4]",
-    duration: "0:45",
-    views: 14200,
-    likes: 1850
   },
   {
     id: "vgal-1-2",
@@ -351,18 +334,492 @@ export const videoGalleryItems: VideoGalleryItem[] = [
   }
 ];
 
-const videoCategories = ['ALL', 'GALLERY UPLOADS', 'GOOGLE DRIVE', 'CINEMATIC REELS', 'DRONE & FPV', 'COMMERCIAL', 'MOTION & VFX', 'DOCUMENTARY'];
+const DEFAULT_CATEGORIES = ['ALL', 'GALLERY UPLOADS', 'GOOGLE DRIVE', 'CINEMATIC REELS', 'DRONE & FPV', 'COMMERCIAL', 'MOTION & VFX', 'DOCUMENTARY'];
+const CATEGORIES_STORAGE_KEY = 'mushfiq_custom_categories_v2';
+const VIDEOS_CATALOG_STORAGE_KEY = 'mushfiq_custom_videos_catalog_v2';
+const LEGACY_STORAGE_KEY = 'mushfiq_custom_drive_videos';
 
-const STORAGE_KEY = 'mushfiq_custom_drive_videos';
+interface GalleryVideoCardProps {
+  item: VideoGalleryItem;
+  isAdminAuthenticated: boolean;
+  openMenuVideoId: string | null;
+  setOpenMenuVideoId: React.Dispatch<React.SetStateAction<string | null>>;
+  setEditingVideo: (item: VideoGalleryItem) => void;
+  setThumbnailStudioVideo: (item: VideoGalleryItem) => void;
+  setVideoToDelete: (item: VideoGalleryItem) => void;
+  setActiveVideo: (item: VideoGalleryItem) => void;
+  draggedVideoId: string | null;
+  handleDragStart: (e: React.DragEvent, id: string) => void;
+  handleDragOver: (e: React.DragEvent, id: string) => void;
+  handleDragLeave: (e: React.DragEvent, id: string) => void;
+  handleDragEnd: () => void;
+  handleDrop: (e: React.DragEvent, id: string) => void;
+  isDragTarget: boolean;
+  isBeingDragged: boolean;
+}
+
+function GalleryVideoCard({
+  item,
+  isAdminAuthenticated,
+  openMenuVideoId,
+  setOpenMenuVideoId,
+  setEditingVideo,
+  setThumbnailStudioVideo,
+  setVideoToDelete,
+  setActiveVideo,
+  draggedVideoId,
+  handleDragStart,
+  handleDragOver,
+  handleDragLeave,
+  handleDragEnd,
+  handleDrop,
+  isDragTarget,
+  isBeingDragged,
+}: GalleryVideoCardProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Determine video orientation (landscape vs portrait) and box aspect ratio
+  const [detectedAspect, setDetectedAspect] = useState<'landscape' | 'portrait' | null>(() => {
+    const ratio = item.aspectRatioClass?.toLowerCase() || '';
+    if (
+      ratio.includes('16/9') ||
+      ratio.includes('4/3') ||
+      ratio.includes('21/9') ||
+      ratio.includes('16/10') ||
+      ratio.includes('video')
+    ) {
+      return 'landscape';
+    }
+    if (
+      ratio.includes('9/16') ||
+      ratio.includes('3/4') ||
+      ratio.includes('4/5')
+    ) {
+      return 'portrait';
+    }
+    return null;
+  });
+
+  const isLandscape = Boolean(
+    detectedAspect === 'landscape' ||
+    (detectedAspect === null && (
+      item.aspectRatioClass?.includes('16/9') ||
+      item.aspectRatioClass?.includes('4/3') ||
+      item.aspectRatioClass?.includes('21/9') ||
+      item.aspectRatioClass?.includes('16/10') ||
+      item.aspectRatioClass?.includes('video')
+    ))
+  );
+
+  const isPortrait = Boolean(
+    detectedAspect === 'portrait' ||
+    (detectedAspect === null && !isLandscape && (
+      item.aspectRatioClass?.includes('9/16') ||
+      item.aspectRatioClass?.includes('3/4') ||
+      item.aspectRatioClass?.includes('4/5')
+    ))
+  );
+
+  // Dynamic box aspect ratio: sets box to landscape if video is landscape, portrait if video is portrait
+  const boxAspectClass = (() => {
+    const ratio = item.aspectRatioClass?.toLowerCase() || '';
+    if (ratio.includes('16/9') || ratio.includes('video')) return 'aspect-video';
+    if (ratio.includes('4/3')) return 'aspect-[4/3]';
+    if (ratio.includes('21/9')) return 'aspect-[21/9]';
+    if (ratio.includes('9/16')) return 'aspect-[9/16]';
+    if (ratio.includes('3/4')) return 'aspect-[3/4]';
+    if (ratio.includes('4/5')) return 'aspect-[4/5]';
+    if (ratio.includes('square') || ratio.includes('1/1')) return 'aspect-square';
+
+    if (isLandscape) return 'aspect-video';
+    if (isPortrait) return 'aspect-[9/16]';
+    return isGoogleDriveUrl(item.videoUrl) ? 'aspect-video' : 'aspect-[9/16]';
+  })();
+
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    if (!item.aspectRatioClass && img.naturalWidth && img.naturalHeight) {
+      if (img.naturalWidth > img.naturalHeight * 1.05) {
+        setDetectedAspect('landscape');
+      } else if (img.naturalHeight > img.naturalWidth * 1.05) {
+        setDetectedAspect('portrait');
+      }
+    }
+  };
+
+  const handleVideoMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const vid = e.currentTarget;
+    if (!item.aspectRatioClass && vid.videoWidth && vid.videoHeight) {
+      if (vid.videoWidth > vid.videoHeight * 1.05) {
+        setDetectedAspect('landscape');
+      } else if (vid.videoHeight > vid.videoWidth * 1.05) {
+        setDetectedAspect('portrait');
+      }
+    }
+  };
+
+  // Playable video stream for hover motion preview
+  const hoverVideoSrc = isGoogleDriveUrl(item.videoUrl)
+    ? 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-beach-and-the-ocean-41550-large.mp4'
+    : item.videoUrl;
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+    if (videoRef.current) {
+      try {
+        videoRef.current.currentTime = 0;
+      } catch {}
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setIsVideoPlaying(true);
+          })
+          .catch(() => {});
+      }
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    setIsVideoPlaying(false);
+    if (videoRef.current) {
+      try {
+        videoRef.current.pause();
+        videoRef.current.currentTime = 0;
+      } catch {}
+    }
+  };
+
+  useEffect(() => {
+    if (videoRef.current) {
+      const p = videoRef.current.play();
+      if (p !== undefined) {
+        p.then(() => setIsVideoPlaying(true)).catch(() => {});
+      }
+    }
+  }, [hoverVideoSrc]);
+
+  return (
+    <div
+      draggable={isAdminAuthenticated}
+      onDragStart={(e) => handleDragStart(e, item.id)}
+      onDragOver={(e) => handleDragOver(e, item.id)}
+      onDragLeave={(e) => handleDragLeave(e, item.id)}
+      onDragEnd={handleDragEnd}
+      onDrop={(e) => handleDrop(e, item.id)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onClick={() => {
+        if (!draggedVideoId) setActiveVideo(item);
+      }}
+      className={`group relative flex flex-col p-2 pb-2.5 sm:p-3 sm:pb-3.5 rounded-[18px] sm:rounded-[24px] md:rounded-[28px] bg-gradient-to-b from-[#181b26]/95 via-[#0e1017]/98 to-[#090a0d]/98 border transition-all duration-300 animate-fadeIn break-inside-avoid w-full mb-3 sm:mb-4 md:mb-6 shadow-[0_12px_40px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.12)] ${
+        openMenuVideoId === item.id ? 'z-40' : 'z-10'
+      } ${
+        isBeingDragged
+          ? 'opacity-35 scale-95 border-dashed border-blue-400 bg-blue-950/20 cursor-grabbing shadow-none'
+          : isDragTarget
+          ? 'scale-[1.02] border-cyan-400 bg-cyan-950/30 shadow-[0_0_35px_rgba(6,182,212,0.6)] cursor-copy ring-2 ring-cyan-400/40'
+          : 'border-white/[0.09] hover:border-blue-400/60 hover:shadow-[0_24px_60px_rgba(0,0,0,0.95),0_0_35px_rgba(59,130,246,0.28),inset_0_1px_0_rgba(255,255,255,0.25)] hover:-translate-y-1 active:scale-[0.98] cursor-pointer'
+      }`}
+    >
+      {/* Top Metallic Glass Sheen Highlight */}
+      <div className="absolute top-0 inset-x-6 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none group-hover:via-blue-300/50 transition-colors duration-500" />
+
+      {/* Inner Video Poster Frame with video-aware aspect ratio (landscape or portrait) */}
+      <div className={`relative w-full ${boxAspectClass} rounded-[14px] sm:rounded-[20px] md:rounded-[22px] overflow-hidden bg-neutral-950 border border-white/[0.1] group-hover:border-white/[0.22] transition-colors duration-300 shadow-inner`}>
+        {/* Poster Image */}
+        <img
+          src={item.url}
+          alt={item.title}
+          loading="lazy"
+          onLoad={handleImageLoad}
+          className={`w-full h-full object-cover transition-transform duration-700 ease-out ${
+            isHovered ? 'scale-105' : 'scale-100'
+          }`}
+        />
+
+        {/* Auto-Playing Video Preview (Mobile & Desktop Compatible) */}
+        {hoverVideoSrc && (
+          <video
+            ref={videoRef}
+            src={hoverVideoSrc}
+            autoPlay
+            muted
+            playsInline
+            loop
+            preload="auto"
+            onLoadedMetadata={handleVideoMetadata}
+            onCanPlay={() => {
+              if (videoRef.current) {
+                videoRef.current.play().then(() => setIsVideoPlaying(true)).catch(() => {});
+              }
+            }}
+            onPlaying={() => setIsVideoPlaying(true)}
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 pointer-events-none rounded-[14px] sm:rounded-[20px] md:rounded-[22px] ${
+              isVideoPlaying ? 'opacity-100' : 'opacity-0'
+            }`}
+          />
+        )}
+
+        {/* Top Right Admin Controls */}
+        {isAdminAuthenticated && (
+          <div className="absolute top-2 sm:top-2.5 right-2 sm:right-2.5 z-30">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenMenuVideoId((prev) => (prev === item.id ? null : item.id));
+                }}
+                title="Reel Edit Menu (Three Dots)"
+                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer backdrop-blur-xl shadow-lg active:scale-90 border ${
+                  openMenuVideoId === item.id
+                    ? 'bg-blue-600 text-white border-blue-400 ring-2 ring-blue-400/50 shadow-[0_0_20px_rgba(59,130,246,0.7)]'
+                    : 'bg-black/80 hover:bg-white text-neutral-300 hover:text-black border-white/20 hover:border-white'
+                }`}
+              >
+                <MoreVertical className="w-3.5 h-3.5" />
+              </button>
+
+              {/* Dropdown Menu for Edits - Compact Premium Icon Palette */}
+              {openMenuVideoId === item.id && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute right-0 top-full mt-1.5 flex flex-col items-center gap-1.5 p-1.5 rounded-2xl bg-[#090b12]/98 border border-white/20 shadow-[0_16px_40px_rgba(0,0,0,0.98),0_0_25px_rgba(37,99,235,0.35)] backdrop-blur-2xl z-50 animate-fadeIn select-none"
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenMenuVideoId(null);
+                      setEditingVideo(item);
+                    }}
+                    title="Edit Details"
+                    aria-label="Edit Details"
+                    className="w-8 h-8 rounded-xl bg-blue-500/15 hover:bg-blue-600 border border-blue-400/25 hover:border-blue-400 flex items-center justify-center text-blue-400 hover:text-white transition-all active:scale-90 cursor-pointer shadow-sm group"
+                  >
+                    <Edit3 className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenMenuVideoId(null);
+                      setThumbnailStudioVideo(item);
+                    }}
+                    title="Cover Frame"
+                    aria-label="Cover Frame"
+                    className="w-8 h-8 rounded-xl bg-purple-500/15 hover:bg-purple-600 border border-purple-400/25 hover:border-purple-400 flex items-center justify-center text-purple-400 hover:text-white transition-all active:scale-90 cursor-pointer shadow-sm group"
+                  >
+                    <Film className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  </button>
+
+                  <div className="w-5 h-px bg-white/15 my-0.5" />
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenMenuVideoId(null);
+                      setVideoToDelete(item);
+                    }}
+                    title="Delete Reel"
+                    aria-label="Delete Reel"
+                    className="w-8 h-8 rounded-xl bg-red-500/15 hover:bg-red-600 border border-red-500/25 hover:border-red-400 flex items-center justify-center text-red-400 hover:text-white transition-all active:scale-90 cursor-pointer shadow-sm group"
+                  >
+                    <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Top Vignette Accent */}
+        <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/50 via-transparent to-transparent pointer-events-none z-10 opacity-70 group-hover:opacity-100 transition-opacity" />
+
+        {/* Center Play Button Overlay on Hover (Fades out when video starts auto-playing) */}
+        {!isVideoPlaying && (
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center pointer-events-none backdrop-blur-[2px]">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/15 backdrop-blur-2xl border border-white/40 ring-1 ring-white/20 text-white shadow-[0_12px_35px_rgba(0,0,0,0.85)] flex items-center justify-center transform scale-90 group-hover:scale-100 transition-all duration-300 group-hover:border-blue-400/80 group-hover:shadow-[0_0_30px_rgba(59,130,246,0.55)]">
+              <Play className="w-5.5 h-5.5 sm:w-6 sm:h-6 fill-white text-white ml-0.5 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]" />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Centered Typography Matching Reference Card */}
+      <div className="mt-2.5 sm:mt-3 text-center px-1 sm:px-2 font-sans select-none">
+        <h3 className="text-xs sm:text-sm md:text-[14.5px] font-bold text-white tracking-tight line-clamp-1 group-hover:text-blue-300 transition-colors duration-200 drop-shadow-sm">
+          {item.title}
+        </h3>
+        <p
+          className="text-[10.5px] sm:text-xs text-neutral-400 font-medium mt-0.5 truncate tracking-normal group-hover:text-neutral-200 transition-colors duration-200"
+          title={item.caption || item.location || item.category}
+        >
+          {item.caption || item.location || item.category}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [animKey, setAnimKey] = useState<number>(0);
   const [activeVideo, setActiveVideo] = useState<VideoGalleryItem | null>(null);
+  const [downloading, setDownloading] = useState<boolean>(false);
   const [likedVideos, setLikedVideos] = useState<Record<string, boolean>>({});
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
   const [showAdminModal, setShowAdminModal] = useState<boolean>(false);
+  const [detectedVideoAspect, setDetectedVideoAspect] = useState<'landscape' | 'portrait' | null>(null);
+
+  // Categories State (Supports custom added categories)
+  const [categories, setCategories] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(CATEGORIES_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // fallback
+    }
+    return DEFAULT_CATEGORIES;
+  });
+
+  // Full Persistent Catalog Videos (Supports custom ordering, renaming, recategorizing, custom delete)
+  const [catalogVideos, setCatalogVideos] = useState<VideoGalleryItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(VIDEOS_CATALOG_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((v) => ({
+            ...v,
+            duration: v.duration && v.duration.toLowerCase() === 'hd reel' ? '' : (v.duration || '')
+          }));
+        }
+      }
+      // Migrate from previous storage key if present
+      const oldSaved = localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (oldSaved) {
+        const parsedOld = JSON.parse(oldSaved);
+        if (Array.isArray(parsedOld) && parsedOld.length > 0) {
+          return [...parsedOld, ...videoGalleryItems];
+        }
+      }
+    } catch {
+      // fallback
+    }
+    return videoGalleryItems;
+  });
+
+  // State for Dedicated Delete Warning Confirmation Modal
+  const [videoToDelete, setVideoToDelete] = useState<VideoGalleryItem | null>(null);
+
+  // State for 3-dots Edit Menu, Video Details Editing Modal & Thumbnail Studio Modal
+  const [openMenuVideoId, setOpenMenuVideoId] = useState<string | null>(null);
+  const [editingVideo, setEditingVideo] = useState<VideoGalleryItem | null>(null);
+  const [thumbnailStudioVideo, setThumbnailStudioVideo] = useState<VideoGalleryItem | null>(null);
+
+  // Edit Video Details Form States
+  const [editFormTitle, setEditFormTitle] = useState<string>('');
+  const [editFormCategory, setEditFormCategory] = useState<string>('');
+  const [editFormLocation, setEditFormLocation] = useState<string>('');
+  const [editFormDuration, setEditFormDuration] = useState<string>('');
+  const [editFormCaption, setEditFormCaption] = useState<string>('');
+  const [editFormAspectRatio, setEditFormAspectRatio] = useState<string>('aspect-[16/9]');
+
+  // Populate form fields when video is selected for editing
+  useEffect(() => {
+    if (editingVideo) {
+      setEditFormTitle(editingVideo.title || '');
+      setEditFormCategory(editingVideo.category || '');
+      setEditFormLocation(editingVideo.location || '');
+      setEditFormDuration(editingVideo.duration || '');
+      setEditFormCaption(editingVideo.caption || '');
+      setEditFormAspectRatio(editingVideo.aspectRatioClass || 'aspect-[16/9]');
+    }
+  }, [editingVideo]);
+
+  // Close 3-dots menu on click outside or Escape
+  useEffect(() => {
+    if (!openMenuVideoId) return;
+    const handleGlobalClick = () => setOpenMenuVideoId(null);
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpenMenuVideoId(null);
+    };
+    window.addEventListener('click', handleGlobalClick);
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => {
+      window.removeEventListener('click', handleGlobalClick);
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, [openMenuVideoId]);
+
+  // Save changes from Edit Video Details Modal
+  const handleSaveVideoEdits = () => {
+    if (!editingVideo) return;
+    const cleanDuration = editFormDuration.trim().toLowerCase() === 'hd reel' ? '' : (editFormDuration.trim() || '');
+    const updated: VideoGalleryItem = {
+      ...editingVideo,
+      title: editFormTitle.trim() || editingVideo.title,
+      category: editFormCategory.trim() || editingVideo.category,
+      location: editFormLocation.trim(),
+      duration: cleanDuration,
+      caption: editFormCaption.trim(),
+      aspectRatioClass: editFormAspectRatio || editingVideo.aspectRatioClass || 'aspect-[16/9]'
+    };
+    setCatalogVideos((prev) => {
+      const list = prev.map((v) => (v.id === updated.id ? updated : v));
+      try {
+        localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(list));
+      } catch (e) {
+        console.error(e);
+      }
+      return list;
+    });
+    // Update active video if currently open
+    setActiveVideo((current) => (current && current.id === updated.id ? updated : current));
+    setEditingVideo(null);
+    window.dispatchEvent(new Event('sync-custom-videos'));
+    setSaveToastMsg(`"${updated.title}" updated! Remember to click "Save Changes".`);
+    setTimeout(() => setSaveToastMsg(''), 3500);
+  };
+
+  // Save new thumbnail selected from ThumbnailEditStudioModal
+  const handleSaveThumbnailCover = (newCoverUrl: string) => {
+    if (!thumbnailStudioVideo) return;
+    const updated: VideoGalleryItem = {
+      ...thumbnailStudioVideo,
+      url: newCoverUrl
+    };
+    setCatalogVideos((prev) => {
+      const list = prev.map((v) => (v.id === updated.id ? updated : v));
+      try {
+        localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(list));
+      } catch (e) {
+        console.error(e);
+      }
+      return list;
+    });
+    setThumbnailStudioVideo(null);
+    setSaveToastMsg(`Thumbnail cover updated for "${updated.title}"!`);
+    setTimeout(() => setSaveToastMsg(''), 3500);
+  };
+
+  // State for Adding Category
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState<boolean>(false);
+  const [newCategoryName, setNewCategoryName] = useState<string>('');
+
+  // Reset detected aspect ratio when active video changes
+  useEffect(() => {
+    setDetectedVideoAspect(null);
+  }, [activeVideo?.id]);
+
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
     try {
       return sessionStorage.getItem('mushfiq_videography_admin_session') === 'true';
@@ -371,29 +828,13 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
     }
   });
 
-  // Load custom user-added videos from localStorage
-  const [customVideos, setCustomVideos] = useState<VideoGalleryItem[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          return parsed.map((item: any) => ({ ...item, isCustom: true }));
-        }
-      }
-    } catch {
-      // fallback
-    }
-    return [];
-  });
-
   // Rehydrate video URLs for items stored in IndexedDB (gallery uploads)
   useEffect(() => {
     let isCancelled = false;
     const restoreBlobs = async () => {
       let hasUpdates = false;
       const updated = await Promise.all(
-        customVideos.map(async (v) => {
+        catalogVideos.map(async (v) => {
           if (v.isGalleryUpload && (!v.videoUrl || v.videoUrl.startsWith('blob:'))) {
             try {
               const blob = await getVideoBlob(v.id);
@@ -409,7 +850,7 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
         })
       );
       if (hasUpdates && !isCancelled) {
-        setCustomVideos(updated);
+        setCatalogVideos(updated);
       }
     };
     restoreBlobs();
@@ -418,53 +859,237 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
     };
   }, []);
 
-  // Listen to custom-videos-updated event
-  useEffect(() => {
-    const handleSync = () => {
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            setCustomVideos(parsed.map((item: any) => ({ ...item, isCustom: true })));
-          }
-        }
-      } catch {
-        // ignore
-      }
-    };
-    window.addEventListener('custom-videos-updated', handleSync);
-    return () => window.removeEventListener('custom-videos-updated', handleSync);
-  }, []);
-
   const handleAddVideo = (newVideo: VideoGalleryItem) => {
-    const videoWithCustom: VideoGalleryItem = { ...newVideo, isCustom: true };
-    const updated = [videoWithCustom, ...customVideos];
-    setCustomVideos(updated);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    } catch (e) {
-      console.error('Failed to save to localStorage', e);
+    const cleanDuration = newVideo.duration && newVideo.duration.toLowerCase() === 'hd reel' ? '' : (newVideo.duration || '');
+    const videoWithCustom: VideoGalleryItem = { ...newVideo, duration: cleanDuration, isCustom: true };
+    setCatalogVideos((prev) => {
+      const updated = [videoWithCustom, ...prev];
+      try {
+        localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(updated));
+      } catch (e) {
+        console.error('Failed to save to localStorage', e);
+      }
+      return updated;
+    });
+
+    // Auto-register new category if not already listed
+    if (newVideo.category && !categories.includes(newVideo.category.toUpperCase())) {
+      const cleanCat = newVideo.category.toUpperCase();
+      setCategories((prev) => {
+        const updated = [...prev, cleanCat];
+        try {
+          localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
     }
-    window.dispatchEvent(new CustomEvent('custom-videos-updated'));
-    // Instantly open the newly added video so the user previews it immediately!
+
     setActiveVideo(videoWithCustom);
     setShowAddModal(false);
   };
 
-  const handleDeleteCustomVideo = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const updated = customVideos.filter((v) => v.id !== id);
-    setCustomVideos(updated);
+  // Custom Delete: Deletes ANY video from catalog
+  const handleDeleteVideo = async (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setCatalogVideos((prev) => {
+      const updated = prev.filter((v) => v.id !== id);
+      try {
+        localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(updated));
+      } catch (err) {
+        console.error('Failed to update catalog after delete', err);
+      }
+      return updated;
+    });
+
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       await deleteVideoBlob(id);
-    } catch (e) {
-      console.error('Failed to delete video', e);
-    }
-    window.dispatchEvent(new CustomEvent('custom-videos-updated'));
+    } catch {}
+
     if (activeVideo?.id === id) {
       setActiveVideo(null);
+    }
+  };
+
+  // Reorder Videos: Moves a video earlier or later in the catalog order
+  const handleMoveVideo = (id: string, direction: -1 | 1, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setCatalogVideos((prev) => {
+      const index = prev.findIndex((v) => v.id === id);
+      if (index === -1) return prev;
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+
+      const newArr = [...prev];
+      const [moved] = newArr.splice(index, 1);
+      newArr.splice(targetIndex, 0, moved);
+
+      try {
+        localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(newArr));
+      } catch (err) {
+        console.error('Failed to save reordered catalog', err);
+      }
+      return newArr;
+    });
+  };
+
+  // State for Drag & Drop Reordering in 2D Grid (left, right, up, down)
+  const [draggedVideoId, setDraggedVideoId] = useState<string | null>(null);
+  const [dragOverVideoId, setDragOverVideoId] = useState<string | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
+    setDraggedVideoId(id);
+  };
+
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverVideoId !== id) {
+      setDragOverVideoId(id);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent, id: string) => {
+    if (dragOverVideoId === id) {
+      setDragOverVideoId(null);
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedVideoId(null);
+    setDragOverVideoId(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    const sourceId = draggedVideoId || e.dataTransfer.getData('text/plain');
+    if (!sourceId || sourceId === targetId) {
+      setDraggedVideoId(null);
+      setDragOverVideoId(null);
+      return;
+    }
+
+    setCatalogVideos((prev) => {
+      const fromIndex = prev.findIndex((v) => v.id === sourceId);
+      const toIndex = prev.findIndex((v) => v.id === targetId);
+      if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return prev;
+
+      const newArr = [...prev];
+      const [moved] = newArr.splice(fromIndex, 1);
+      newArr.splice(toIndex, 0, moved);
+
+      try {
+        localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(newArr));
+      } catch (err) {
+        console.error('Failed to save reordered catalog', err);
+      }
+      return newArr;
+    });
+
+    setDraggedVideoId(null);
+    setDragOverVideoId(null);
+    setSaveToastMsg('Video order updated! Remember to click "Save Changes" to save permanently.');
+    setTimeout(() => {
+      setSaveToastMsg('');
+    }, 3500);
+  };
+
+  // Add Category: Creates a new category tab and persists it
+  const handleCreateCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = newCategoryName.trim().toUpperCase();
+    if (!clean) return;
+
+    if (!categories.includes(clean)) {
+      const updated = [...categories, clean];
+      setCategories(updated);
+      try {
+        localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(updated));
+      } catch (err) {
+        console.error(err);
+      }
+      setSelectedCategory(clean);
+    }
+    setNewCategoryName('');
+    setShowAddCategoryModal(false);
+  };
+
+  // Delete Custom Category
+  const handleDeleteCategory = (catToDelete: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (catToDelete === 'ALL') return;
+    const updated = categories.filter((c) => c !== catToDelete);
+    setCategories(updated);
+    try {
+      localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(updated));
+    } catch (err) {
+      console.error(err);
+    }
+    if (selectedCategory === catToDelete) {
+      setSelectedCategory('ALL');
+    }
+  };
+
+  // Saved Snapshots to detect unsaved changes (reset is ONLY available before saving changes)
+  const [savedVideosSnapshot, setSavedVideosSnapshot] = useState<VideoGalleryItem[]>(() => catalogVideos);
+  const [savedCategoriesSnapshot, setSavedCategoriesSnapshot] = useState<string[]>(() => categories);
+
+  // State for Save & Reset Options Feedback & Modals
+  const [saveToastMsg, setSaveToastMsg] = useState<string>('');
+  const [showResetConfirmModal, setShowResetConfirmModal] = useState<boolean>(false);
+
+  // Check if there are unsaved changes
+  const hasUnsavedChanges = React.useMemo(() => {
+    const savedVideosSig = JSON.stringify(
+      savedVideosSnapshot.map((v) => ({ id: v.id, title: v.title, category: v.category, caption: v.caption }))
+    );
+    const currentVideosSig = JSON.stringify(
+      catalogVideos.map((v) => ({ id: v.id, title: v.title, category: v.category, caption: v.caption }))
+    );
+    const savedCatsSig = JSON.stringify(savedCategoriesSnapshot);
+    const currentCatsSig = JSON.stringify(categories);
+
+    return savedVideosSig !== currentVideosSig || savedCatsSig !== currentCatsSig;
+  }, [catalogVideos, categories, savedVideosSnapshot, savedCategoriesSnapshot]);
+
+  // Save All Changes: Persists current video order, custom titles, categories, and uploads
+  const handleSaveAllChanges = () => {
+    try {
+      localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(catalogVideos));
+      localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(categories));
+
+      const customOnly = catalogVideos.filter((v) => v.isCustom);
+      localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(customOnly));
+
+      // Synchronize saved snapshots with current state (so hasUnsavedChanges becomes false)
+      setSavedVideosSnapshot(catalogVideos);
+      setSavedCategoriesSnapshot(categories);
+
+      window.dispatchEvent(new Event('sync-custom-videos'));
+
+      setSaveToastMsg('All video reorderings, renames, categories & custom uploads saved successfully!');
+      setTimeout(() => {
+        setSaveToastMsg('');
+      }, 3500);
+    } catch (err) {
+      console.error('Failed saving all changes', err);
+    }
+  };
+
+  // Reset Unsaved Changes: Reverts unsaved edits back to last saved state (only executable before save)
+  const handleConfirmResetAll = async () => {
+    try {
+      setCatalogVideos(savedVideosSnapshot);
+      setCategories(savedCategoriesSnapshot);
+
+      setShowResetConfirmModal(false);
+      setSaveToastMsg('All unsaved edits and reorderings have been reset back to last saved state!');
+      setTimeout(() => {
+        setSaveToastMsg('');
+      }, 3500);
+    } catch (err) {
+      console.error('Error resetting changes', err);
     }
   };
 
@@ -475,55 +1100,7 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Focus container on mount for immediate mouse wheel & keyboard interaction
-  useEffect(() => {
-    containerRef.current?.focus();
-  }, []);
-
-  // Keyboard shortcut to close on Escape & lock body scrolling & Mouse Wheel scroll handling
-  useEffect(() => {
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (showAdminModal) {
-          setShowAdminModal(false);
-        } else if (showAddModal) {
-          setShowAddModal(false);
-        } else if (activeVideo) {
-          setActiveVideo(null);
-        } else {
-          onClose();
-        }
-      }
-    };
-
-    const handleWheel = (e: WheelEvent) => {
-      if (activeVideo || showAddModal || showAdminModal) return;
-      if (containerRef.current) {
-        containerRef.current.scrollTop += e.deltaY;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('wheel', handleWheel, { passive: true });
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('wheel', handleWheel);
-    };
-  }, [activeVideo, showAddModal, showAdminModal, onClose]);
-
-  const toggleLike = (id: string, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setLikedVideos((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  // Combine custom user videos with base curated catalog
-  const allVideos: VideoGalleryItem[] = [...customVideos, ...videoGalleryItems];
-
-  const filteredVideos = allVideos.filter((v) => {
+  const filteredVideos = catalogVideos.filter((v) => {
     const matchesCategory = (() => {
       if (selectedCategory === 'ALL') return true;
       if (selectedCategory === 'GALLERY UPLOADS') return Boolean(v.isGalleryUpload);
@@ -543,6 +1120,97 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
     );
   });
 
+  const handlePrevVideo = () => {
+    if (!activeVideo || filteredVideos.length === 0) return;
+    const currentIndex = filteredVideos.findIndex((v) => v.id === activeVideo.id);
+    const prevIndex = (currentIndex - 1 + filteredVideos.length) % filteredVideos.length;
+    setActiveVideo(filteredVideos[prevIndex]);
+  };
+
+  const handleNextVideo = () => {
+    if (!activeVideo || filteredVideos.length === 0) return;
+    const currentIndex = filteredVideos.findIndex((v) => v.id === activeVideo.id);
+    const nextIndex = (currentIndex + 1) % filteredVideos.length;
+    setActiveVideo(filteredVideos[nextIndex]);
+  };
+
+  const handleDownloadVideo = async (video: VideoGalleryItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDownloading(true);
+    try {
+      const driveId = extractGoogleDriveId(video.videoUrl);
+      if (driveId) {
+        window.open(`https://drive.google.com/uc?export=download&id=${driveId}`, '_blank');
+      } else {
+        const response = await fetch(video.videoUrl);
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = `${video.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}.mp4`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+      }
+    } catch {
+      window.open(video.videoUrl, '_blank');
+    } finally {
+      setTimeout(() => setDownloading(false), 1500);
+    }
+  };
+
+  // Focus container on mount for immediate mouse wheel & keyboard interaction
+  useEffect(() => {
+    containerRef.current?.focus();
+  }, []);
+
+  // Keyboard shortcut to close on Escape, Arrow keys navigation & lock body scrolling & Mouse Wheel scroll handling
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showAdminModal) {
+          setShowAdminModal(false);
+        } else if (showAddModal) {
+          setShowAddModal(false);
+        } else if (activeVideo) {
+          setActiveVideo(null);
+        } else {
+          onClose();
+        }
+      } else if (activeVideo && !showAdminModal && !showAddModal) {
+        if (e.key === 'ArrowLeft') {
+          handlePrevVideo();
+        } else if (e.key === 'ArrowRight') {
+          handleNextVideo();
+        }
+      }
+    };
+
+    const handleWheel = (e: WheelEvent) => {
+      if (activeVideo || showAddModal || showAdminModal) return;
+      if (containerRef.current) {
+        containerRef.current.scrollTop += e.deltaY;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('wheel', handleWheel, { passive: true });
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('wheel', handleWheel);
+    };
+  }, [activeVideo, showAddModal, showAdminModal, onClose, filteredVideos]);
+
+  const toggleLike = (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setLikedVideos((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
   return (
     <motion.div
       ref={containerRef}
@@ -551,7 +1219,7 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
-      className="fixed inset-0 z-[100] bg-[#090A0F] text-neutral-100 overflow-y-auto overscroll-contain touch-pan-y outline-none font-sans selection:bg-[#2563EB] selection:text-white"
+      className="fixed inset-0 z-[100] bg-[#090A0F] text-neutral-100 overflow-y-auto overscroll-contain touch-pan-y outline-none font-sans selection:bg-[#2563EB] selection:text-white flex flex-col min-h-screen"
     >
       {/* Background Ambient Glow */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
@@ -578,11 +1246,11 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
 
           <div className="hidden sm:block h-4 w-[1px] bg-white/15" />
 
-          <div className="flex items-center gap-2 sm:gap-2.5 overflow-hidden">
+          <div className="flex items-center gap-2 sm:gap-2.5 overflow-hidden font-sans">
             <span className="text-xs sm:text-base font-bold text-white tracking-tight bg-gradient-to-r from-white via-neutral-100 to-neutral-300 bg-clip-text truncate">
               Videography Works
             </span>
-            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 rounded-full text-[9px] sm:text-[11px] font-mono font-bold tracking-wider text-blue-400 bg-blue-500/10 border border-blue-500/25 shadow-[0_0_12px_rgba(37,99,235,0.18)] shrink-0">
+            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-0.5 rounded-full text-[10px] sm:text-xs font-sans font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/25 shadow-[0_0_12px_rgba(37,99,235,0.18)] shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
               {filteredVideos.length} {filteredVideos.length === 1 ? 'WORK' : 'WORKS'}
             </span>
@@ -615,43 +1283,84 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
         </div>
 
         {/* Right / Category Filter Pills */}
-        <div className="flex items-center gap-1 sm:gap-1.5 p-1 rounded-full bg-neutral-950/80 border border-neutral-800 backdrop-blur-xl overflow-x-auto touch-pan-x pb-1 lg:pb-1 no-scrollbar shadow-inner -mx-1 px-1 sm:mx-0 sm:px-1">
-          {videoCategories.map((cat) => {
+        <div className="flex items-center gap-1.5 sm:gap-2 p-1.5 rounded-full bg-gradient-to-r from-neutral-950/90 via-neutral-900/95 to-neutral-950/90 border border-white/10 backdrop-blur-2xl overflow-x-auto touch-pan-x pb-1.5 lg:pb-1.5 no-scrollbar shadow-[0_8px_32px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.1)] -mx-1 px-1.5 sm:mx-0 sm:px-2">
+          {categories.map((cat) => {
             const isSelected = selectedCategory === cat;
+            const isRemovable = cat !== 'ALL';
+
+            const getCategoryIcon = (categoryName: string) => {
+              const upper = categoryName.toUpperCase();
+              if (upper === 'ALL') return Sparkles;
+              if (upper.includes('DRONE') || upper.includes('FPV')) return Camera;
+              if (upper.includes('MOTION') || upper.includes('VFX')) return Video;
+              if (upper.includes('COMMERCIAL')) return Tag;
+              if (upper.includes('GALLERY') || upper.includes('UPLOAD')) return Upload;
+              if (upper.includes('GOOGLE') || upper.includes('DRIVE')) return ExternalLink;
+              return Film;
+            };
+
+            const CatIcon = getCategoryIcon(cat);
+
             return (
-              <button
-                key={cat}
-                onClick={() => handleCategoryClick(cat)}
-                className={`relative px-3 sm:px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer whitespace-nowrap flex items-center gap-1.5 z-10 select-none shrink-0 ${
-                  isSelected
-                    ? 'text-white'
-                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-white/[0.04]'
-                }`}
-              >
-                {isSelected && (
-                  <motion.div
-                    layoutId="activeVideoCategoryPill"
-                    className="absolute inset-0 rounded-full bg-[#2563EB] shadow-[0_0_20px_rgba(37,99,235,0.45)] border border-blue-400/30 -z-10"
-                    transition={{ type: 'spring', stiffness: 450, damping: 32 }}
-                  />
+              <div key={cat} className="relative flex items-center group/cat shrink-0">
+                <button
+                  onClick={() => handleCategoryClick(cat)}
+                  className={`relative px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-300 cursor-pointer whitespace-nowrap flex items-center gap-2 z-10 select-none shrink-0 ${
+                    isSelected
+                      ? 'text-white'
+                      : 'text-neutral-400 hover:text-white hover:bg-white/[0.06]'
+                  }`}
+                >
+                  {isSelected && (
+                    <motion.div
+                      layoutId="activeVideoCategoryPill"
+                      className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 shadow-[0_0_25px_rgba(37,99,235,0.6)] border border-blue-400/40 -z-10"
+                      transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                    />
+                  )}
+                  <CatIcon className={`w-3.5 h-3.5 transition-colors duration-200 ${isSelected ? 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]' : 'text-neutral-400 group-hover/cat:text-neutral-200'}`} />
+                  <span className="font-medium tracking-wide">{cat}</span>
+                </button>
+
+                {/* Custom Removal of Categories in Admin Mode */}
+                {isAdminAuthenticated && isRemovable && (
+                  <button
+                    onClick={(e) => handleDeleteCategory(cat, e)}
+                    title={`Remove "${cat}" category filter tab`}
+                    className="w-4 h-4 rounded-full bg-red-950/80 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/40 text-[9px] flex items-center justify-center transition-all cursor-pointer mr-0.5 hover:scale-110 active:scale-90 z-20 shadow-sm"
+                    aria-label={`Remove category ${cat}`}
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
                 )}
-                <Film className={`w-3.5 h-3.5 transition-colors duration-200 ${isSelected ? 'text-white drop-shadow-[0_0_6px_rgba(255,255,255,0.4)]' : 'text-neutral-400'}`} />
-                <span>{cat}</span>
-              </button>
+              </div>
             );
           })}
+
+          {/* Add Category Pill (Admin Only) */}
+          {isAdminAuthenticated && (
+            <button
+              onClick={() => setShowAddCategoryModal(true)}
+              className="px-3.5 py-1.5 sm:py-2 rounded-full bg-purple-500/15 hover:bg-purple-600/90 text-purple-300 hover:text-white border border-purple-500/35 text-xs font-sans font-semibold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer shadow-[0_0_15px_rgba(168,85,247,0.2)] hover:scale-105 active:scale-95"
+              title="Add New Category"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Category</span>
+            </button>
+          )}
         </div>
 
         {/* Right Controls: Admin Active status (if logged in) & Close */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2.5 shrink-0">
           {isAdminAuthenticated && (
             <button
               onClick={() => setShowAdminModal(true)}
-              className="px-3 py-1.5 rounded-full bg-blue-600/20 border border-blue-500/40 text-blue-400 hover:text-white hover:bg-blue-600 text-[11px] font-mono font-bold uppercase tracking-wider transition-all duration-200 flex items-center gap-1.5 shadow-sm hover:scale-105 active:scale-95 cursor-pointer whitespace-nowrap"
-              title="Open Admin Control"
+              className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-blue-600/20 via-indigo-600/20 to-purple-600/20 hover:from-blue-600/40 hover:to-indigo-600/40 border border-blue-400/40 hover:border-blue-300 text-blue-300 hover:text-white text-xs font-mono font-bold uppercase tracking-wider transition-all duration-300 flex items-center gap-2 shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:shadow-[0_0_30px_rgba(59,130,246,0.5)] hover:scale-105 active:scale-95 cursor-pointer whitespace-nowrap"
+              title="Open Admin Control Hub"
             >
-              <Unlock className="w-3 h-3" />
-              <span className="hidden sm:inline">ADMIN ACTIVE</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)] animate-pulse" />
+              <Unlock className="w-3.5 h-3.5 text-blue-400" />
+              <span className="hidden sm:inline font-mono">ADMIN ACTIVE</span>
             </button>
           )}
 
@@ -666,182 +1375,243 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
       </header>
 
       {/* Main Gallery Area - Orderly Responsive Grid matching exact reference image style */}
-      <main className="max-w-[1540px] mx-auto px-2 xs:px-3 sm:px-6 md:px-8 py-4 sm:py-8 relative z-10">
+      <main className="flex-1 w-full max-w-[1540px] mx-auto px-2 xs:px-3 sm:px-6 md:px-8 py-4 sm:py-8 relative z-10 font-sans">
+        {/* Ambient Cinema Lighting Mesh for Ultra-Premium Atmosphere */}
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 w-full max-w-4xl h-80 bg-gradient-to-b from-blue-600/[0.08] via-indigo-600/[0.03] to-transparent blur-[140px] pointer-events-none rounded-full -z-10" />
+        <div className="absolute top-1/3 -left-20 w-80 h-80 bg-blue-500/[0.03] blur-[150px] pointer-events-none rounded-full -z-10" />
+        <div className="absolute top-2/3 -right-20 w-80 h-80 bg-purple-600/[0.03] blur-[150px] pointer-events-none rounded-full -z-10" />
         
-        {/* Admin Bar (Only visible when authenticated) */}
+        {/* Save/Reset Feedback Toast Banner */}
+        <AnimatePresence>
+          {saveToastMsg && (
+            <motion.div
+              initial={{ opacity: 0, y: -10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.98 }}
+              className="mb-4 p-3.5 px-5 rounded-2xl bg-emerald-950/80 border border-emerald-500/50 text-emerald-200 text-xs font-sans font-semibold flex items-center justify-between gap-3 shadow-[0_0_30px_rgba(16,185,129,0.25)] backdrop-blur-xl"
+            >
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>{saveToastMsg}</span>
+              </div>
+              <button
+                onClick={() => setSaveToastMsg('')}
+                className="p-1 rounded-full hover:bg-white/10 text-emerald-300 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Admin Bar (CSS Selector 1) - Compact, Ultra-Professional Studio Ribbon */}
         {isAdminAuthenticated && (
-          <div className="mb-6 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-blue-950/30 via-neutral-900 to-neutral-900 border border-blue-800/40 backdrop-blur-md transition-all shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">
-            <div className="flex items-center gap-2.5 text-blue-300">
-              <Shield className="w-4 h-4 text-blue-400 flex-shrink-0" />
-              <span>Owner Admin Mode Active • Videography Library Access</span>
+          <div className="relative overflow-hidden mb-5 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl bg-[#090b12]/95 border border-white/[0.08] shadow-[0_4px_25px_rgba(0,0,0,0.6)] backdrop-blur-xl transition-all flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-3 text-xs font-sans">
+            {/* Ambient Background Aura */}
+            <div className="absolute top-0 right-1/4 w-80 h-10 bg-blue-500/10 blur-xl pointer-events-none" />
+
+            {/* Left Status Bar */}
+            <div className="flex items-center gap-2.5 relative z-10 shrink-0">
+              <div className="w-7 h-7 rounded-lg bg-blue-500/15 border border-blue-400/30 flex items-center justify-center text-blue-400 shadow-sm shrink-0">
+                <Shield className="w-3.5 h-3.5 text-blue-400" />
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-['Syne'] font-bold text-white tracking-wide">
+                  ADMIN COCKPIT
+                </span>
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 font-mono text-[9px] font-bold tracking-widest uppercase">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  LIVE
+                </span>
+                <span className="text-[11px] text-neutral-400 font-sans hidden lg:inline border-l border-white/10 pl-2">
+                  Drag cards in any direction to reorder
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+
+            {/* Right Action Button Deck */}
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 relative z-10 shrink-0">
               <button
                 onClick={() => setShowAddModal(true)}
-                className="px-3.5 py-1.5 rounded-xl bg-[#2563EB] hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-[#2563EB] hover:bg-blue-500 text-white font-semibold text-[11px] flex items-center gap-1.5 transition-all shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>+ Upload / Add Video</span>
+                <Upload className="w-3 h-3 stroke-[2.5]" />
+                <span>Upload Video</span>
               </button>
+
+              <button
+                onClick={() => setShowAddCategoryModal(true)}
+                className="px-3 py-1.5 rounded-xl bg-purple-500/15 hover:bg-purple-600/30 text-purple-200 hover:text-white border border-purple-500/30 font-semibold text-[11px] flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+              >
+                <Tag className="w-3 h-3" />
+                <span>Category</span>
+              </button>
+
+              {/* Save All Changes Option */}
+              {hasUnsavedChanges ? (
+                <button
+                  onClick={handleSaveAllChanges}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] flex items-center gap-1.5 transition-all shadow-[0_0_15px_rgba(16,185,129,0.4)] hover:scale-105 active:scale-95 cursor-pointer animate-pulse"
+                  title="Save all unsaved reorderings and edits"
+                >
+                  <Save className="w-3 h-3" />
+                  <span>Save Changes</span>
+                </button>
+              ) : (
+                <button
+                  disabled
+                  className="px-2.5 py-1.5 rounded-xl bg-emerald-950/30 text-emerald-400/70 border border-emerald-500/20 text-[11px] font-medium flex items-center gap-1.5 cursor-default opacity-80"
+                  title="All changes are currently saved."
+                >
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                  <span>Saved</span>
+                </button>
+              )}
+
+              {/* Reset Option */}
+              {hasUnsavedChanges ? (
+                <button
+                  onClick={() => setShowResetConfirmModal(true)}
+                  className="px-2.5 py-1.5 rounded-xl bg-red-950/40 hover:bg-red-900/60 text-red-300 hover:text-white border border-red-500/30 font-semibold text-[11px] flex items-center gap-1.5 transition-all cursor-pointer hover:scale-105 active:scale-95"
+                  title="Reset unsaved edits back to last saved state"
+                >
+                  <RotateCcw className="w-3 h-3 text-red-400" />
+                  <span>Reset</span>
+                </button>
+              ) : (
+                <button
+                  disabled
+                  className="px-2.5 py-1.5 rounded-xl bg-white/[0.02] text-neutral-600 border border-white/[0.06] font-medium text-[11px] flex items-center gap-1.5 cursor-not-allowed opacity-40"
+                  title="Reset cannot be used after saving changes."
+                >
+                  <RotateCcw className="w-3 h-3 text-neutral-600" />
+                  <span>Reset</span>
+                </button>
+              )}
+
               <button
                 onClick={() => setShowAdminModal(true)}
-                className="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white text-xs transition-all cursor-pointer"
+                className="px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.09] border border-white/10 text-neutral-300 hover:text-white font-medium text-[11px] flex items-center gap-1.5 transition-all cursor-pointer hover:scale-105 active:scale-95"
               >
-                Admin Hub
+                <Unlock className="w-3 h-3 text-neutral-400" />
+                <span>Hub</span>
               </button>
             </div>
           </div>
         )}
 
-        {/* Responsive Grid with exact reference image rounded cards & glowing border */}
+        {/* Responsive Gallery Arranged by Video Sizes */}
         <AnimatePresence mode="wait">
-          <motion.div
-            key={`${selectedCategory}-${animKey}`}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4 md:gap-6 items-stretch"
-          >
-            {filteredVideos.length === 0 ? (
-              <div className="col-span-full py-16 sm:py-24 flex flex-col items-center justify-center text-center px-4">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white/[0.04] border border-white/10 flex items-center justify-center mb-4 text-blue-400 shadow-inner">
-                  {searchQuery ? <Search className="w-6 h-6 sm:w-7 sm:h-7" /> : <Film className="w-6 h-6 sm:w-7 sm:h-7" />}
-                </div>
-                <h4 className="text-base sm:text-lg font-bold text-white tracking-tight">
-                  {searchQuery ? `No videos matching "${searchQuery}"` : 'No videos in this category'}
-                </h4>
-                <p className="text-xs sm:text-sm text-neutral-400 mt-1.5 max-w-sm">
-                  {searchQuery
-                    ? 'Try searching with different keywords, location names, or clear the search filter.'
-                    : 'All reels and films are presented in the All category.'}
-                </p>
-                <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 mt-6">
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-white/10 hover:bg-white/15 text-white text-xs font-semibold tracking-wide transition-all border border-white/15 hover:scale-105 active:scale-95 cursor-pointer"
-                    >
-                      Clear Search
-                    </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      setSelectedCategory('ALL');
-                      setSearchQuery('');
-                    }}
-                    className="px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-[#2563EB] hover:bg-blue-600 text-white text-xs font-semibold tracking-wide transition-all shadow-[0_0_20px_rgba(37,99,235,0.4)] hover:scale-105 active:scale-95 cursor-pointer"
-                  >
-                    View All Reels
-                  </button>
-                </div>
+          {filteredVideos.length === 0 ? (
+            <motion.div
+              key="empty"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="py-16 sm:py-24 flex flex-col items-center justify-center text-center px-4 w-full"
+            >
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white/[0.04] border border-white/10 flex items-center justify-center mb-4 text-blue-400 shadow-inner">
+                {searchQuery ? <Search className="w-6 h-6 sm:w-7 sm:h-7" /> : <Film className="w-6 h-6 sm:w-7 sm:h-7" />}
               </div>
-            ) : (
-              filteredVideos.map((item) => {
-                const isLiked = Boolean(likedVideos[item.id]);
+              <h4 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                {searchQuery ? `No videos matching "${searchQuery}"` : 'No videos in this category'}
+              </h4>
+              <p className="text-xs sm:text-sm text-neutral-400 mt-1.5 max-w-sm">
+                {searchQuery
+                  ? 'Try searching with different keywords, location names, or clear the search filter.'
+                  : 'All reels and films are presented in the All category.'}
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 mt-6">
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-white/10 hover:bg-white/15 text-white text-xs font-semibold tracking-wide transition-all border border-white/15 hover:scale-105 active:scale-95 cursor-pointer"
+                  >
+                    Clear Search
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setSelectedCategory('ALL');
+                    setSearchQuery('');
+                  }}
+                  className="px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-[#2563EB] hover:bg-blue-600 text-white text-xs font-semibold tracking-wide transition-all shadow-[0_0_20px_rgba(37,99,235,0.4)] hover:scale-105 active:scale-95 cursor-pointer"
+                >
+                  View All Reels
+                </button>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key={`${selectedCategory}-${animKey}`}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+              className="w-full columns-2 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-4 gap-2.5 sm:gap-4 md:gap-6"
+            >
+              {filteredVideos.map((item) => {
+                const isBeingDragged = draggedVideoId === item.id;
+                const isDragTarget = dragOverVideoId === item.id && !isBeingDragged;
 
                 return (
-                  <div
+                  <GalleryVideoCard
                     key={item.id}
-                    onClick={() => setActiveVideo(item)}
-                    className="group relative flex flex-col p-1.5 pb-2 sm:p-3 sm:pb-4 rounded-[14px] sm:rounded-[24px] md:rounded-[28px] bg-[#111216]/95 border sm:border-2 border-[#2563EB]/70 hover:border-[#3B82F6] shadow-[0_6px_20px_rgba(0,0,0,0.7),0_0_12px_rgba(37,99,235,0.15)] hover:shadow-[0_16px_40px_rgba(0,0,0,0.9),0_0_30px_rgba(37,99,235,0.35)] transition-all duration-300 active:scale-[0.97] cursor-pointer animate-fadeIn"
-                  >
-                    {/* Inner Video Poster Frame with rounded border matching reference */}
-                    <div className="relative w-full aspect-[4/5] rounded-[10px] sm:rounded-[18px] md:rounded-[20px] overflow-hidden bg-neutral-950 border border-neutral-800/60 shadow-inner">
-                      <img
-                        src={item.url}
-                        alt={item.title}
-                        loading="lazy"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-                      />
-
-                      {/* Source Badge (Top Left) */}
-                      {item.isGalleryUpload ? (
-                        <div className="absolute top-2.5 left-2.5 z-10 px-2 py-0.5 rounded-full bg-emerald-600/90 backdrop-blur-md text-white text-[9px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 shadow-md border border-emerald-400/30">
-                          <FolderOpen className="w-2.5 h-2.5" />
-                          <span>Gallery</span>
-                        </div>
-                      ) : isGoogleDriveUrl(item.videoUrl) ? (
-                        <div className="absolute top-2.5 left-2.5 z-10 px-2 py-0.5 rounded-full bg-blue-600/90 backdrop-blur-md text-white text-[9px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 shadow-md border border-blue-400/30">
-                          <Video className="w-2.5 h-2.5" />
-                          <span>Drive</span>
-                        </div>
-                      ) : null}
-
-                      {/* Duration Badge (Top Right) */}
-                      <div className="absolute top-2.5 right-2.5 z-10 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-black/75 backdrop-blur-md text-white text-[9px] sm:text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 sm:gap-1.5 border border-white/20 shadow-md">
-                        <Play className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-white text-white" />
-                        <span>{item.duration}</span>
-                      </div>
-
-                      {/* Center Play Button Overlay on Hover */}
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
-                        <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-[#2563EB] text-white shadow-2xl flex items-center justify-center transform scale-90 group-hover:scale-110 transition-transform">
-                          <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-white ml-0.5" />
-                        </div>
-                      </div>
-
-                      {/* Delete button for custom videos in admin mode */}
-                      {item.isCustom && isAdminAuthenticated && (
-                        <button
-                          onClick={(e) => handleDeleteCustomVideo(item.id, e)}
-                          className="absolute bottom-2.5 right-2.5 z-20 p-2 rounded-full bg-red-600/80 hover:bg-red-600 text-white backdrop-blur-md transition-all cursor-pointer shadow-md"
-                          title="Delete Video"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Centered Typography Matching Reference Card */}
-                    <div className="mt-1.5 sm:mt-3 text-center px-0.5 sm:px-1">
-                      <h3 className="text-[11px] xs:text-xs sm:text-sm md:text-base font-bold text-white tracking-tight line-clamp-1 group-hover:text-blue-300 transition-colors">
-                        {item.title}
-                      </h3>
-                      <p className="text-[9px] xs:text-[10px] sm:text-xs text-neutral-400 font-medium mt-0.5 truncate">
-                        {item.location || item.category}
-                      </p>
-                    </div>
-                  </div>
+                    item={item}
+                    isAdminAuthenticated={isAdminAuthenticated}
+                    openMenuVideoId={openMenuVideoId}
+                    setOpenMenuVideoId={setOpenMenuVideoId}
+                    setEditingVideo={setEditingVideo}
+                    setThumbnailStudioVideo={setThumbnailStudioVideo}
+                    setVideoToDelete={setVideoToDelete}
+                    setActiveVideo={setActiveVideo}
+                    draggedVideoId={draggedVideoId}
+                    handleDragStart={handleDragStart}
+                    handleDragOver={handleDragOver}
+                    handleDragLeave={handleDragLeave}
+                    handleDragEnd={handleDragEnd}
+                    handleDrop={handleDrop}
+                    isDragTarget={isDragTarget}
+                    isBeingDragged={isBeingDragged}
+                  />
                 );
-              })
-            )}
-          </motion.div>
+              })}
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
 
       {/* Footer of Videography Gallery with Admin Access Icon */}
-      <footer className="mt-12 sm:mt-16 border-t border-neutral-900/90 bg-[#060608]/80 backdrop-blur-md py-6 sm:py-8 px-4 sm:px-8">
-        <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-neutral-500">
-          <div className="flex items-center gap-3">
-            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-            <span className="tracking-wider uppercase text-[11px] text-neutral-400">
-              MUSHFIQ ARCHIVE • CINEMATIC & COMMERCIAL VIDEOGRAPHY
+      <footer className="mt-6 sm:mt-10 mt-auto border-t border-white/[0.06] bg-[#07080c]/90 backdrop-blur-md py-2.5 sm:py-3 px-3.5 sm:px-6 font-sans w-full">
+        <div className="max-w-[1440px] mx-auto flex items-center justify-between gap-3 text-[10px] sm:text-[11px] font-sans text-neutral-400">
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+            <span className="font-semibold tracking-wider uppercase text-[10px] sm:text-[11px] text-neutral-300 truncate">
+              MUSHFIQ ARCHIVE • VIDEOGRAPHY
             </span>
           </div>
 
-          <div className="flex items-center gap-4">
-            <span className="text-[11px]">{filteredVideos.length} REELS AVAILABLE</span>
-            <span className="text-neutral-800">|</span>
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+            <span className="text-[10px] sm:text-[11px] font-medium text-neutral-400">
+              {filteredVideos.length} REELS
+            </span>
+            <span className="text-white/10">|</span>
 
-            {/* Admin Lock / Google Drive Management Icon in Footer */}
+            {/* Admin Lock / Icon-Only Button */}
             <button
               onClick={() => setShowAdminModal(true)}
-              className="group relative flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-neutral-900/90 hover:bg-neutral-800 text-neutral-400 hover:text-white border border-neutral-800/80 hover:border-blue-500/50 transition-all duration-200 cursor-pointer shadow-sm hover:scale-105 active:scale-95"
-              title={isAdminAuthenticated ? "Owner Admin Active • Manage Video Library" : "Owner Admin Access (Id: Mushfii_786 | Pass: @Mushfii_786)"}
+              className={`w-7 h-7 sm:w-7.5 sm:h-7.5 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer shadow-sm hover:scale-105 active:scale-95 ${
+                isAdminAuthenticated
+                  ? 'bg-blue-600/15 hover:bg-blue-600/30 border border-blue-400/40 text-blue-400 hover:text-blue-300 shadow-[0_0_12px_rgba(59,130,246,0.25)]'
+                  : 'bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 hover:border-white/20 text-neutral-500 hover:text-neutral-200'
+              }`}
+              title={isAdminAuthenticated ? "Owner Admin Active" : "Admin Access"}
               aria-label="Admin Access"
             >
               {isAdminAuthenticated ? (
-                <>
-                  <Unlock className="w-3.5 h-3.5 text-blue-400 group-hover:text-blue-300 transition-colors" />
-                  <span className="text-[11px] font-bold text-blue-400 tracking-wider">ADMIN MODE</span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
-                </>
+                <Unlock className="w-3.5 h-3.5 text-blue-400" />
               ) : (
-                <>
-                  <Lock className="w-3.5 h-3.5 text-neutral-500 group-hover:text-blue-400 transition-colors" />
-                  <span className="text-[11px] tracking-wider text-neutral-400 group-hover:text-white">ADMIN</span>
-                </>
+                <Lock className="w-3.5 h-3.5 text-neutral-400 hover:text-neutral-200" />
               )}
             </button>
           </div>
@@ -853,144 +1623,202 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
         {activeVideo && (() => {
           const driveId = extractGoogleDriveId(activeVideo.videoUrl);
 
+          // Determine whether video is portrait or landscape:
+          // Portrait: vertical reels (9:16), 3:4 or 4:5
+          // Landscape: widescreen cinematic (16:9), 4:3, 21:9 ultrawide, or Google Drive / default landscape
+          const isPortraitVideo = Boolean(
+            detectedVideoAspect === 'portrait' ||
+            (detectedVideoAspect === null && (
+              activeVideo.aspectRatioClass?.includes('9/16') ||
+              activeVideo.aspectRatioClass?.includes('3/4') ||
+              activeVideo.aspectRatioClass?.includes('4/5')
+            ))
+          );
+          const isLandscapeVideo = !isPortraitVideo;
+
           return (
-            <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-6 md:p-10">
-              {/* Backdrop */}
+            <div
+              className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-6 md:p-10 select-none overflow-y-auto"
+              onClick={() => setActiveVideo(null)}
+            >
+              {/* Dark Blur Backdrop */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                onClick={() => setActiveVideo(null)}
-                className="fixed inset-0 bg-black/95 backdrop-blur-2xl"
+                className="fixed inset-0 bg-black/85 backdrop-blur-xl"
               />
 
-              {/* Modal Container */}
+              {/* Floating Left Navigation Arrow Button */}
+              {filteredVideos.length > 1 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePrevVideo();
+                  }}
+                  className="hidden md:flex absolute left-3 sm:left-6 lg:left-8 xl:left-12 z-[160] p-3.5 rounded-full bg-black/80 hover:bg-white text-white hover:text-black hover:scale-110 active:scale-95 transition-all duration-200 backdrop-blur-md cursor-pointer border border-white/15 shadow-[0_10px_30px_rgba(0,0,0,0.8)]"
+                  aria-label="Previous video"
+                  title="Previous video (Left Arrow key)"
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+              )}
+
+              {/* Floating Right Navigation Arrow Button */}
+              {filteredVideos.length > 1 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleNextVideo();
+                  }}
+                  className="hidden md:flex absolute right-3 sm:right-6 lg:right-8 xl:right-12 z-[160] p-3.5 rounded-full bg-black/80 hover:bg-white text-white hover:text-black hover:scale-110 active:scale-95 transition-all duration-200 backdrop-blur-md cursor-pointer border border-white/15 shadow-[0_10px_30px_rgba(0,0,0,0.8)]"
+                  aria-label="Next video"
+                  title="Next video (Right Arrow key)"
+                >
+                  <ChevronRight className="w-6 h-6" />
+                </button>
+              )}
+
+              {/* Modal Container: Expanded width for Landscape videos, Increased height for Portrait videos */}
               <motion.div
-                initial={{ opacity: 0, scale: 0.94 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.94 }}
-                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                className="relative max-w-5xl w-full max-h-[90vh] bg-neutral-900 border border-neutral-800 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl z-10 flex flex-col lg:flex-row my-auto text-white"
+                layout
+                initial={{ opacity: 0, scale: 0.92, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.92, y: 20 }}
+                transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+                className={`relative w-full bg-[#121316]/95 border border-white/15 rounded-[32px] sm:rounded-[36px] p-4 sm:p-5 shadow-[0_25px_70px_rgba(0,0,0,0.9),0_0_35px_rgba(37,99,235,0.15)] backdrop-blur-2xl z-10 flex flex-col my-auto text-white font-sans transition-all duration-300 ${
+                  isLandscapeVideo
+                    ? 'max-w-[960px] md:max-w-[1040px] lg:max-w-[1120px]'
+                    : 'max-w-[460px] sm:max-w-[500px] md:max-w-[540px]'
+                }`}
+                onClick={(e) => e.stopPropagation()}
               >
-                {/* Video Player Viewport */}
-                <div className="relative flex-1 bg-black flex items-center justify-center p-2 sm:p-4 min-h-[340px] lg:min-h-[520px]">
-                  {driveId ? (
-                    <div className="relative w-full h-full min-h-[340px] lg:min-h-[520px] flex items-center justify-center bg-black">
+                {/* Close Button at top right matching reference image */}
+                <button
+                  onClick={() => setActiveVideo(null)}
+                  className="absolute top-4 right-4 z-30 p-2 rounded-full bg-black/80 hover:bg-white text-white hover:text-black hover:scale-110 active:scale-90 transition-all duration-200 shadow-lg cursor-pointer backdrop-blur-md border border-white/15"
+                  aria-label="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+
+                {/* Inner Media Viewport Area: Dynamic Landscape Width & Tall Portrait Height */}
+                <div
+                  className={`relative w-full bg-[#181920] border border-white/10 rounded-[24px] overflow-hidden flex items-center justify-center shadow-inner group transition-all duration-300 ${
+                    isLandscapeVideo
+                      ? 'aspect-video min-h-[300px] sm:min-h-[440px] md:min-h-[520px] lg:min-h-[580px] max-h-[76vh]'
+                      : 'h-[70vh] sm:h-[78vh] md:h-[82vh] min-h-[520px] sm:min-h-[620px] max-h-[820px]'
+                  }`}
+                >
+                  {/* Ambient Blurred Fill from Video Poster */}
+                  <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    <img
+                      src={activeVideo.url}
+                      alt=""
+                      aria-hidden="true"
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover blur-2xl scale-125 opacity-35 select-none"
+                    />
+                    <div className="absolute inset-0 bg-neutral-950/40" />
+                  </div>
+
+                  {/* Main Video Element */}
+                  <div className="relative z-10 w-full h-full flex items-center justify-center p-2 rounded-[20px] overflow-hidden">
+                    {driveId ? (
                       <iframe
                         src={`https://drive.google.com/file/d/${driveId}/preview`}
-                        className="w-full h-full min-h-[340px] lg:min-h-[520px] rounded-lg border-0 bg-black shadow-2xl"
+                        className="w-full h-full rounded-[18px] border-0 bg-black shadow-2xl"
                         allow="autoplay; fullscreen"
                         allowFullScreen
                         title={activeVideo.title}
                       />
-                    </div>
-                  ) : (
-                    <video
-                      src={activeVideo.videoUrl}
-                      poster={activeVideo.url}
-                      controls
-                      autoPlay
-                      loop
-                      playsInline
-                      className="max-h-[75vh] w-auto max-w-full rounded-lg object-contain shadow-2xl"
-                    />
+                    ) : (
+                      <video
+                        key={activeVideo.id}
+                        src={activeVideo.videoUrl}
+                        poster={activeVideo.url}
+                        controls
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        onLoadedMetadata={(e) => {
+                          const v = e.currentTarget;
+                          if (v.videoWidth && v.videoHeight) {
+                            if (v.videoWidth >= v.videoHeight * 1.1) {
+                              setDetectedVideoAspect('landscape');
+                            } else if (v.videoHeight > v.videoWidth * 1.05) {
+                              setDetectedVideoAspect('portrait');
+                            }
+                          }
+                        }}
+                        className={`rounded-[18px] select-none block shadow-2xl ${
+                          isLandscapeVideo
+                            ? 'w-full h-full object-contain'
+                            : 'h-full w-auto max-w-full object-contain'
+                        }`}
+                      />
+                    )}
+                  </div>
+
+                  {/* Mobile In-card Left & Right Scroll Arrows */}
+                  {filteredVideos.length > 1 && (
+                    <>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePrevVideo();
+                        }}
+                        className="md:hidden absolute left-2.5 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/75 hover:bg-white text-white hover:text-black backdrop-blur-md transition-all active:scale-90 border border-white/15 cursor-pointer shadow-lg"
+                        aria-label="Previous video"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleNextVideo();
+                        }}
+                        className="md:hidden absolute right-2.5 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/75 hover:bg-white text-white hover:text-black backdrop-blur-md transition-all active:scale-90 border border-white/15 cursor-pointer shadow-lg"
+                        aria-label="Next video"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </>
                   )}
 
-                  {/* Close Overlay Icon Mobile */}
+                  {/* Premium Download Pill Button matching exact reference image */}
                   <button
-                    onClick={() => setActiveVideo(null)}
-                    className="absolute top-4 right-4 p-2.5 rounded-full bg-black/60 hover:bg-[#2563EB] text-white backdrop-blur-md transition-colors cursor-pointer lg:hidden z-20"
+                    onClick={(e) => handleDownloadVideo(activeVideo, e)}
+                    title="Download video"
+                    className="absolute bottom-3.5 right-3.5 z-20 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-black/80 hover:bg-white text-neutral-200 hover:text-black border border-white/15 backdrop-blur-md text-xs font-sans font-medium transition-all duration-200 shadow-lg active:scale-95 cursor-pointer group"
                   >
-                    <X className="w-5 h-5" />
+                    {downloading ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400 stroke-[2.5]" />
+                        <span>Saved</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-3.5 h-3.5 transition-transform duration-200 group-hover:-translate-y-0.5" />
+                        <span>Download</span>
+                      </>
+                    )}
                   </button>
                 </div>
 
-                {/* Sidebar Video Details */}
-                <div className="w-full lg:w-80 p-6 lg:p-8 bg-neutral-900 border-t lg:border-t-0 lg:border-l border-neutral-800 flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <span className="px-2.5 py-1 rounded-full bg-[#2563EB]/20 border border-[#2563EB]/40 text-[#2563EB] text-xs font-mono font-bold uppercase flex items-center gap-1.5 w-fit">
-                          <Video className="w-3.5 h-3.5 text-[#2563EB]" />
-                          <span>{activeVideo.category}</span>
-                        </span>
-                        <h2 className="text-xl font-bold font-mono text-white mt-3 leading-tight">
-                          {activeVideo.title}
-                        </h2>
-                      </div>
-
-                      <button
-                        onClick={() => setActiveVideo(null)}
-                        className="hidden lg:flex p-2 rounded-full hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors cursor-pointer"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-
-                    {driveId && (
-                      <div className="mb-4 p-2.5 rounded-xl bg-[#2563EB]/15 border border-[#2563EB]/35 flex items-center justify-between">
-                        <span className="text-[11px] font-mono text-blue-300 flex items-center gap-1.5">
-                          <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-                          Drive Preview
-                        </span>
-                        <a
-                          href={`https://drive.google.com/file/d/${driveId}/view`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[11px] font-mono text-blue-400 hover:text-white underline flex items-center gap-1"
-                        >
-                          Open in Drive <ExternalLink className="w-3 h-3" />
-                        </a>
-                      </div>
-                    )}
-
-                    <p className="text-xs sm:text-sm text-neutral-300 font-light leading-relaxed mb-6">
-                      "{activeVideo.caption}"
-                    </p>
-
-                    <div className="space-y-3 pt-4 border-t border-neutral-800 text-xs font-mono text-neutral-400">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-[#2563EB]" />
-                        <span>{activeVideo.location}</span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Camera className="w-4 h-4 text-[#2563EB]" />
-                        <span>{activeVideo.camera} • {activeVideo.lens}</span>
-                      </div>
-
-                      <div className="text-[11px] text-neutral-500 pl-6">
-                        {activeVideo.settings}
-                      </div>
-
-                      <div className="flex items-center gap-2 text-[11px] text-neutral-400 pt-1">
-                        <Eye className="w-3.5 h-3.5 text-[#2563EB]" />
-                        <span>{activeVideo.views.toLocaleString()} VIEWS • {activeVideo.duration}</span>
-                      </div>
-
-                      <div className="pt-2 text-[11px] text-neutral-500">
-                        {activeVideo.year}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-8 pt-4 border-t border-neutral-800 flex items-center justify-between">
-                    <button
-                      onClick={(e) => toggleLike(activeVideo.id, e)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-mono font-bold transition-colors cursor-pointer ${
-                        likedVideos[activeVideo.id]
-                          ? 'bg-[#2563EB] text-white'
-                          : 'bg-neutral-800 text-neutral-200 hover:bg-neutral-700'
-                      }`}
-                    >
-                      <Heart className={`w-4 h-4 ${likedVideos[activeVideo.id] ? 'fill-white' : ''}`} />
-                      <span>{likedVideos[activeVideo.id] ? 'LIKED' : 'LIKE'}</span>
-                    </button>
-
-                    <span className="text-[10px] font-mono text-neutral-500">
-                      MUSHFIQ ARCHIVE
-                    </span>
-                  </div>
+                {/* Centered Typography: Title & Subtitle matching reference card */}
+                <div className="mt-4 px-2 text-center font-sans">
+                  <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                    {activeVideo.title}
+                  </h3>
+                  <p
+                    className="text-xs sm:text-sm text-neutral-400 font-medium mt-0.5 truncate"
+                    title={activeVideo.caption || activeVideo.location || activeVideo.category}
+                  >
+                    {activeVideo.caption || activeVideo.location || activeVideo.category}
+                  </p>
                 </div>
               </motion.div>
             </div>
@@ -998,12 +1826,238 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
         })()}
       </AnimatePresence>
 
+      {/* Add Category Modal */}
+      <AnimatePresence>
+        {showAddCategoryModal && (
+          <div
+            data-lenis-prevent="true"
+            className="fixed inset-0 z-[170] flex items-center justify-center p-3 sm:p-6 select-none"
+          >
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowAddCategoryModal(false)}
+              className="fixed inset-0 bg-black/90 backdrop-blur-xl"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: 'spring', damping: 26, stiffness: 340 }}
+              className="relative w-full max-w-md bg-[#0e0f14] border border-neutral-800 rounded-3xl p-5 sm:p-6 shadow-2xl z-10 text-white font-sans my-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-neutral-800/80">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                    <Tag className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white">Add New Category</h3>
+                    <p className="text-xs text-neutral-400">Create a new filter category tab</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowAddCategoryModal(false)}
+                  className="p-1.5 rounded-full hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateCategory} className="mt-5 space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-neutral-300">
+                    Category Name
+                  </label>
+                  <input
+                    type="text"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    placeholder="e.g. WEDDING FILMS, AUTOMOTIVE, TRAVEL"
+                    required
+                    autoFocus
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 focus:border-purple-500 focus:outline-none text-xs text-white placeholder-neutral-500"
+                  />
+                </div>
+
+                <div className="pt-2 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddCategoryModal(false)}
+                    className="px-4 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-semibold transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold uppercase tracking-wider transition-all shadow-lg cursor-pointer"
+                  >
+                    Create Category
+                  </button>
+                </div>
+              </form>
+
+              {/* Manage & Remove Active Categories */}
+              <div className="mt-5 pt-4 border-t border-neutral-800 space-y-2 font-sans">
+                <div className="flex items-center justify-between text-xs font-semibold text-neutral-400">
+                  <span>ACTIVE CATEGORIES ({categories.length})</span>
+                  <span className="text-[10px] text-neutral-500 font-normal">Click trash to remove category</span>
+                </div>
+                <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1 modal-scroll-slider">
+                  {categories.map((cat) => (
+                    <div
+                      key={cat}
+                      className="px-3 py-1.5 rounded-xl bg-neutral-900 border border-neutral-800 flex items-center justify-between text-xs text-white"
+                    >
+                      <span className="font-medium text-xs">{cat}</span>
+                      {cat !== 'ALL' ? (
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteCategory(cat, e)}
+                          title={`Remove category "${cat}"`}
+                          className="p-1 rounded-lg bg-red-950/60 hover:bg-red-600 text-red-300 hover:text-white transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-neutral-600 italic">Default</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Warning Confirmation Modal for Video Deletion - Exact Match to Reference Image */}
+      <AnimatePresence>
+        {videoToDelete && (
+          <div
+            data-lenis-prevent="true"
+            className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md select-none"
+            onClick={() => setVideoToDelete(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-[540px] rounded-[28px] bg-[#0c0d12] border border-[#ef4444]/45 p-6 sm:p-8 shadow-2xl space-y-6 text-white font-sans"
+            >
+              <div className="flex items-start gap-4 sm:gap-5">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#240f14] border border-red-500/35 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-7 h-7 sm:w-8 sm:h-8 text-[#f87171]" />
+                </div>
+                <div className="space-y-1.5 flex-1">
+                  <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight">
+                    Delete Video Warning
+                  </h3>
+                  <p className="text-xs sm:text-sm text-neutral-300 font-normal">
+                    Are you sure you want to permanently delete
+                  </p>
+                  <p className="text-xs sm:text-sm font-bold text-white">
+                    "{videoToDelete.title}"?
+                  </p>
+                  <p className="text-xs sm:text-sm text-[#f87171] pt-1 font-medium flex items-start gap-1.5 leading-relaxed">
+                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span>This action cannot be undone and will permanently remove this video from your showcase.</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-3 sm:gap-3.5">
+                <button
+                  type="button"
+                  onClick={() => setVideoToDelete(null)}
+                  className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-full bg-[#1e2026] hover:bg-[#2b2e37] text-neutral-200 text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
+                >
+                  Cancel (Keep Video)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleDeleteVideo(videoToDelete.id);
+                    setVideoToDelete(null);
+                  }}
+                  className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-full bg-[#e11d2e] hover:bg-[#ff2438] text-white text-xs sm:text-sm font-bold transition-all shadow-lg shadow-red-600/30 cursor-pointer flex items-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4 text-white" />
+                  <span>Yes, Delete Video</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Warning Confirmation Modal for Resetting All Changes */}
+      <AnimatePresence>
+        {showResetConfirmModal && (
+          <div
+            data-lenis-prevent="true"
+            className="fixed inset-0 z-[210] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md select-none"
+            onClick={() => setShowResetConfirmModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-[520px] rounded-[28px] bg-[#0c0d12] border border-red-500/45 p-6 sm:p-8 shadow-2xl space-y-6 text-white font-sans"
+            >
+              <div className="flex items-start gap-4 sm:gap-5">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#240f14] border border-red-500/35 flex items-center justify-center shrink-0">
+                  <RotateCcw className="w-7 h-7 sm:w-8 sm:h-8 text-[#f87171]" />
+                </div>
+                <div className="space-y-1.5 flex-1">
+                  <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight">
+                    Reset Unsaved Changes?
+                  </h3>
+                  <p className="text-xs sm:text-sm text-neutral-300 font-normal leading-relaxed">
+                    This will revert all recent unsaved video reorderings, title renames, custom categories, and uploaded reels back to your last saved state.
+                  </p>
+                  <p className="text-xs sm:text-sm text-[#f87171] pt-1 font-medium flex items-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span>This action cannot be undone.</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-3 sm:gap-3.5">
+                <button
+                  type="button"
+                  onClick={() => setShowResetConfirmModal(false)}
+                  className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-full bg-[#1e2026] hover:bg-[#2b2e37] text-neutral-200 text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
+                >
+                  Cancel (Keep Changes)
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmResetAll}
+                  className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-full bg-[#e11d2e] hover:bg-[#ff2438] text-white text-xs sm:text-sm font-bold transition-all shadow-lg shadow-red-600/30 cursor-pointer flex items-center gap-2"
+                >
+                  <RotateCcw className="w-4 h-4 text-white" />
+                  <span>Reset All Changes</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Add Google Drive Video Modal */}
       <AddGoogleDriveVideoModal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         onAddVideo={handleAddVideo}
-        existingCount={allVideos.length}
+        existingCount={catalogVideos.length}
       />
 
       {/* Admin Authentication & Control Modal */}
@@ -1011,12 +2065,177 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
         isOpen={showAdminModal}
         onClose={() => setShowAdminModal(false)}
         onOpenAddVideoModal={() => setShowAddModal(true)}
-        customVideos={customVideos}
-        onDeleteCustomVideo={handleDeleteCustomVideo}
+        customVideos={catalogVideos.filter((v) => v.isCustom)}
+        onDeleteCustomVideo={handleDeleteVideo}
         onSelectVideo={(v) => setActiveVideo(v)}
         isAuthenticated={isAdminAuthenticated}
         setIsAuthenticated={setIsAdminAuthenticated}
       />
+
+      {/* Thumbnail Frame Selection Studio Modal */}
+      {thumbnailStudioVideo && (
+        <ThumbnailEditStudioModal
+          isOpen={Boolean(thumbnailStudioVideo)}
+          imageSrc={thumbnailStudioVideo.url}
+          videoSrc={thumbnailStudioVideo.videoUrl}
+          onClose={() => setThumbnailStudioVideo(null)}
+          onSave={handleSaveThumbnailCover}
+        />
+      )}
+
+      {/* Edit Video Details & Metadata Modal */}
+      <AnimatePresence>
+        {editingVideo && (
+          <div
+            data-lenis-prevent="true"
+            className="fixed inset-0 z-[180] flex items-center justify-center p-3 sm:p-6 select-none"
+            onClick={() => setEditingVideo(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/90 backdrop-blur-xl"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: 'spring', damping: 26, stiffness: 340 }}
+              className="relative w-full max-w-lg bg-[#090b12]/98 border border-white/[0.14] rounded-[28px] sm:rounded-[36px] p-5 sm:p-7 shadow-[0_30px_90px_rgba(0,0,0,0.98),0_0_50px_rgba(37,99,235,0.22)] z-10 text-white font-sans my-auto max-h-[90vh] overflow-y-auto backdrop-blur-3xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Top Accent Luxury Lighting Line */}
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#3B82F6] via-purple-500/80 to-transparent pointer-events-none z-30 shadow-[0_0_12px_rgba(59,130,246,0.8)]" />
+
+              <div className="flex items-center justify-between pb-4 border-b border-white/10 relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shadow-sm">
+                    <Edit3 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white tracking-tight">Edit Reel Details</h3>
+                    <p className="text-xs text-neutral-400">Update title, category and description</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingVideo(null)}
+                  className="w-8 h-8 rounded-full bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-neutral-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSaveVideoEdits();
+                }}
+                className="mt-5 space-y-4 relative z-10"
+              >
+                {/* Title */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-neutral-300">
+                    Reel Title
+                  </label>
+                  <input
+                    type="text"
+                    value={editFormTitle}
+                    onChange={(e) => setEditFormTitle(e.target.value)}
+                    required
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-900/90 border border-neutral-800 hover:border-neutral-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none text-xs text-white transition-all"
+                  />
+                </div>
+
+                {/* Category */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-neutral-300">
+                    Category
+                  </label>
+                  <select
+                    value={editFormCategory}
+                    onChange={(e) => setEditFormCategory(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-900/90 border border-neutral-800 hover:border-neutral-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none text-xs text-white transition-all cursor-pointer"
+                  >
+                    {categories
+                      .filter((c) => c !== 'ALL')
+                      .map((c) => (
+                        <option key={c} value={c} className="bg-neutral-900 text-white">
+                          {c}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                {/* Description */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-neutral-300">
+                    Description
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={editFormCaption}
+                    onChange={(e) => setEditFormCaption(e.target.value)}
+                    placeholder="Short description of this reel..."
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-900/90 border border-neutral-800 hover:border-neutral-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none text-xs text-white resize-none transition-all"
+                  />
+                </div>
+
+                {/* Video Box Size / Orientation */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-neutral-300">
+                    Video Box Size / Orientation
+                  </label>
+                  <select
+                    value={editFormAspectRatio}
+                    onChange={(e) => setEditFormAspectRatio(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-900/90 border border-neutral-800 hover:border-neutral-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none text-xs text-white transition-all cursor-pointer"
+                  >
+                    <option value="aspect-[16/9]" className="bg-neutral-900 text-white">
+                      Landscape (16:9 Widescreen)
+                    </option>
+                    <option value="aspect-[9/16]" className="bg-neutral-900 text-white">
+                      Portrait (9:16 Vertical Reel)
+                    </option>
+                    <option value="aspect-[3/4]" className="bg-neutral-900 text-white">
+                      Portrait (3:4 Classic)
+                    </option>
+                    <option value="aspect-[4/3]" className="bg-neutral-900 text-white">
+                      Landscape (4:3 Classic)
+                    </option>
+                    <option value="aspect-[21/9]" className="bg-neutral-900 text-white">
+                      Landscape (21:9 Ultrawide Cinema)
+                    </option>
+                    <option value="aspect-square" className="bg-neutral-900 text-white">
+                      Square (1:1)
+                    </option>
+                  </select>
+                </div>
+
+                {/* Actions */}
+                <div className="pt-3 flex items-center justify-end gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setEditingVideo(null)}
+                    className="px-4 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-neutral-300 hover:text-white text-xs font-semibold transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 rounded-xl bg-[#2563EB] hover:bg-blue-500 text-white text-xs font-semibold uppercase tracking-wider transition-all shadow-lg shadow-blue-600/30 hover:shadow-blue-500/50 hover:scale-105 active:scale-95 cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Save Changes</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

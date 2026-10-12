@@ -82,8 +82,24 @@ export async function deleteVideoBlob(id: string): Promise<void> {
   }
 }
 
-// Generate automatic thumbnail from the video file's first frame
-export function captureVideoFrame(file: File | Blob): Promise<{ dataUrl: string; duration: number }> {
+export async function clearAllVideoBlobs(): Promise<void> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.clear();
+
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  } catch (err) {
+    console.warn('Could not clear video blobs from IndexedDB:', err);
+  }
+}
+
+// Generate automatic thumbnail from the video file's first frame & detect orientation
+export function captureVideoFrame(file: File | Blob): Promise<{ dataUrl: string; duration: number; aspectRatioClass?: string }> {
   return new Promise((resolve) => {
     const video = document.createElement('video');
     video.preload = 'metadata';
@@ -101,23 +117,38 @@ export function captureVideoFrame(file: File | Blob): Promise<{ dataUrl: string;
     };
 
     video.onseeked = () => {
+      let detectedAspect = 'aspect-[16/9]';
+      const vw = video.videoWidth || 1280;
+      const vh = video.videoHeight || 720;
+      if (vh > vw * 1.25) {
+        detectedAspect = 'aspect-[9/16]';
+      } else if (vh > vw * 1.05) {
+        detectedAspect = 'aspect-[3/4]';
+      } else if (vw > vh * 1.45) {
+        detectedAspect = 'aspect-[16/9]';
+      } else if (vw > vh * 1.1) {
+        detectedAspect = 'aspect-[4/3]';
+      } else {
+        detectedAspect = 'aspect-square';
+      }
+
       try {
         const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth || 1280;
-        canvas.height = video.videoHeight || 720;
+        canvas.width = vw;
+        canvas.height = vh;
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
           URL.revokeObjectURL(url);
-          resolve({ dataUrl, duration });
+          resolve({ dataUrl, duration, aspectRatioClass: detectedAspect });
           return;
         }
       } catch (e) {
         // ignore error
       }
       URL.revokeObjectURL(url);
-      resolve({ dataUrl: '', duration });
+      resolve({ dataUrl: '', duration, aspectRatioClass: detectedAspect });
     };
 
     video.onerror = () => {
