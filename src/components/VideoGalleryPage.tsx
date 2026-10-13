@@ -760,6 +760,103 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
     };
   }, [openMenuVideoId]);
 
+  // Helper to automatically persist and synchronize catalog & categories instantly across tabs, windows, and viewers
+  const persistAndSyncCatalog = (videos: VideoGalleryItem[], cats: string[]) => {
+    try {
+      localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(videos));
+      localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(cats));
+      const customOnly = videos.filter((v) => v.isCustom);
+      localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(customOnly));
+
+      setSavedVideosSnapshot(videos);
+      setSavedCategoriesSnapshot(cats);
+
+      window.dispatchEvent(new Event('sync-custom-videos'));
+
+      try {
+        const bc = new BroadcastChannel('portfolio_sync_channel');
+        bc.postMessage({ type: 'VIDEOS_UPDATED', timestamp: Date.now() });
+        bc.close();
+      } catch {}
+    } catch (err) {
+      console.error('Auto-save error:', err);
+    }
+  };
+
+  // Cross-tab & Cross-session Sync Listener
+  useEffect(() => {
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel('portfolio_sync_channel');
+      bc.onmessage = (event) => {
+        if (event.data?.type === 'VIDEOS_UPDATED') {
+          try {
+            const savedVid = localStorage.getItem(VIDEOS_CATALOG_STORAGE_KEY);
+            if (savedVid) {
+              const parsed = JSON.parse(savedVid);
+              if (Array.isArray(parsed)) {
+                setCatalogVideos(parsed);
+                setSavedVideosSnapshot(parsed);
+              }
+            }
+            const savedCat = localStorage.getItem(CATEGORIES_STORAGE_KEY);
+            if (savedCat) {
+              const parsedCat = JSON.parse(savedCat);
+              if (Array.isArray(parsedCat)) {
+                setCategories(parsedCat);
+                setSavedCategoriesSnapshot(parsedCat);
+              }
+            }
+          } catch {}
+        }
+      };
+    } catch {}
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === VIDEOS_CATALOG_STORAGE_KEY || e.key === CATEGORIES_STORAGE_KEY) {
+        try {
+          const savedVid = localStorage.getItem(VIDEOS_CATALOG_STORAGE_KEY);
+          if (savedVid) {
+            const parsed = JSON.parse(savedVid);
+            if (Array.isArray(parsed)) {
+              setCatalogVideos(parsed);
+              setSavedVideosSnapshot(parsed);
+            }
+          }
+          const savedCat = localStorage.getItem(CATEGORIES_STORAGE_KEY);
+          if (savedCat) {
+            const parsedCat = JSON.parse(savedCat);
+            if (Array.isArray(parsedCat)) {
+              setCategories(parsedCat);
+              setSavedCategoriesSnapshot(parsedCat);
+            }
+          }
+        } catch {}
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    const handleSyncEvent = () => {
+      try {
+        const savedVid = localStorage.getItem(VIDEOS_CATALOG_STORAGE_KEY);
+        if (savedVid) {
+          const parsed = JSON.parse(savedVid);
+          if (Array.isArray(parsed)) {
+            setCatalogVideos(parsed);
+            setSavedVideosSnapshot(parsed);
+          }
+        }
+      } catch {}
+    };
+    window.addEventListener('sync-custom-videos', handleSyncEvent);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('sync-custom-videos', handleSyncEvent);
+      if (bc) bc.close();
+    };
+  }, []);
+
   // Save changes from Edit Video Details Modal
   const handleSaveVideoEdits = () => {
     if (!editingVideo) return;
@@ -773,20 +870,16 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
       caption: editFormCaption.trim(),
       aspectRatioClass: editFormAspectRatio || editingVideo.aspectRatioClass || 'aspect-[16/9]'
     };
+    let newCatalog: VideoGalleryItem[] = [];
     setCatalogVideos((prev) => {
-      const list = prev.map((v) => (v.id === updated.id ? updated : v));
-      try {
-        localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(list));
-      } catch (e) {
-        console.error(e);
-      }
-      return list;
+      newCatalog = prev.map((v) => (v.id === updated.id ? updated : v));
+      return newCatalog;
     });
-    // Update active video if currently open
+    persistAndSyncCatalog(newCatalog, categories);
+
     setActiveVideo((current) => (current && current.id === updated.id ? updated : current));
     setEditingVideo(null);
-    window.dispatchEvent(new Event('sync-custom-videos'));
-    setSaveToastMsg(`"${updated.title}" updated! Remember to click "Save Changes".`);
+    setSaveToastMsg(`"${updated.title}" updated and auto-saved successfully!`);
     setTimeout(() => setSaveToastMsg(''), 3500);
   };
 
@@ -797,17 +890,15 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
       ...thumbnailStudioVideo,
       url: newCoverUrl
     };
+    let newCatalog: VideoGalleryItem[] = [];
     setCatalogVideos((prev) => {
-      const list = prev.map((v) => (v.id === updated.id ? updated : v));
-      try {
-        localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(list));
-      } catch (e) {
-        console.error(e);
-      }
-      return list;
+      newCatalog = prev.map((v) => (v.id === updated.id ? updated : v));
+      return newCatalog;
     });
+    persistAndSyncCatalog(newCatalog, categories);
+
     setThumbnailStudioVideo(null);
-    setSaveToastMsg(`Thumbnail cover updated for "${updated.title}"!`);
+    setSaveToastMsg(`Thumbnail cover updated & auto-saved for "${updated.title}"!`);
     setTimeout(() => setSaveToastMsg(''), 3500);
   };
 
@@ -862,44 +953,38 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
   const handleAddVideo = (newVideo: VideoGalleryItem) => {
     const cleanDuration = newVideo.duration && newVideo.duration.toLowerCase() === 'hd reel' ? '' : (newVideo.duration || '');
     const videoWithCustom: VideoGalleryItem = { ...newVideo, duration: cleanDuration, isCustom: true };
+    
+    let updatedCatalog: VideoGalleryItem[] = [];
     setCatalogVideos((prev) => {
-      const updated = [videoWithCustom, ...prev];
-      try {
-        localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(updated));
-      } catch (e) {
-        console.error('Failed to save to localStorage', e);
-      }
-      return updated;
+      updatedCatalog = [videoWithCustom, ...prev];
+      return updatedCatalog;
     });
 
-    // Auto-register new category if not already listed
-    if (newVideo.category && !categories.includes(newVideo.category.toUpperCase())) {
+    let updatedCategories = [...categories];
+    if (newVideo.category && !updatedCategories.includes(newVideo.category.toUpperCase())) {
       const cleanCat = newVideo.category.toUpperCase();
-      setCategories((prev) => {
-        const updated = [...prev, cleanCat];
-        try {
-          localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(updated));
-        } catch {}
-        return updated;
-      });
+      updatedCategories = [...updatedCategories, cleanCat];
+      setCategories(updatedCategories);
     }
+
+    persistAndSyncCatalog(updatedCatalog, updatedCategories);
 
     setActiveVideo(videoWithCustom);
     setShowAddModal(false);
+    setSaveToastMsg(`"${videoWithCustom.title}" added and auto-saved successfully!`);
+    setTimeout(() => setSaveToastMsg(''), 3500);
   };
 
   // Custom Delete: Deletes ANY video from catalog
   const handleDeleteVideo = async (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
+    let updatedCatalog: VideoGalleryItem[] = [];
     setCatalogVideos((prev) => {
-      const updated = prev.filter((v) => v.id !== id);
-      try {
-        localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(updated));
-      } catch (err) {
-        console.error('Failed to update catalog after delete', err);
-      }
-      return updated;
+      updatedCatalog = prev.filter((v) => v.id !== id);
+      return updatedCatalog;
     });
+
+    persistAndSyncCatalog(updatedCatalog, categories);
 
     try {
       await deleteVideoBlob(id);
@@ -908,6 +993,8 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
     if (activeVideo?.id === id) {
       setActiveVideo(null);
     }
+    setSaveToastMsg('Video deleted and changes auto-saved!');
+    setTimeout(() => setSaveToastMsg(''), 3500);
   };
 
   // Reorder Videos: Moves a video earlier or later in the catalog order
@@ -923,13 +1010,11 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
       const [moved] = newArr.splice(index, 1);
       newArr.splice(targetIndex, 0, moved);
 
-      try {
-        localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(newArr));
-      } catch (err) {
-        console.error('Failed to save reordered catalog', err);
-      }
+      persistAndSyncCatalog(newArr, categories);
       return newArr;
     });
+    setSaveToastMsg('Video order updated and auto-saved!');
+    setTimeout(() => setSaveToastMsg(''), 3500);
   };
 
   // State for Drag & Drop Reordering in 2D Grid (left, right, up, down)
@@ -979,17 +1064,13 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
       const [moved] = newArr.splice(fromIndex, 1);
       newArr.splice(toIndex, 0, moved);
 
-      try {
-        localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(newArr));
-      } catch (err) {
-        console.error('Failed to save reordered catalog', err);
-      }
+      persistAndSyncCatalog(newArr, categories);
       return newArr;
     });
 
     setDraggedVideoId(null);
     setDragOverVideoId(null);
-    setSaveToastMsg('Video order updated! Remember to click "Save Changes" to save permanently.');
+    setSaveToastMsg('Video order updated & auto-saved!');
     setTimeout(() => {
       setSaveToastMsg('');
     }, 3500);
@@ -1004,15 +1085,13 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
     if (!categories.includes(clean)) {
       const updated = [...categories, clean];
       setCategories(updated);
-      try {
-        localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(updated));
-      } catch (err) {
-        console.error(err);
-      }
+      persistAndSyncCatalog(catalogVideos, updated);
       setSelectedCategory(clean);
     }
     setNewCategoryName('');
     setShowAddCategoryModal(false);
+    setSaveToastMsg(`Category "${clean}" created & auto-saved!`);
+    setTimeout(() => setSaveToastMsg(''), 3500);
   };
 
   // Delete Custom Category
@@ -1021,14 +1100,12 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
     if (catToDelete === 'ALL') return;
     const updated = categories.filter((c) => c !== catToDelete);
     setCategories(updated);
-    try {
-      localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(updated));
-    } catch (err) {
-      console.error(err);
-    }
+    persistAndSyncCatalog(catalogVideos, updated);
     if (selectedCategory === catToDelete) {
       setSelectedCategory('ALL');
     }
+    setSaveToastMsg(`Category deleted & auto-saved!`);
+    setTimeout(() => setSaveToastMsg(''), 3500);
   };
 
   // Saved Snapshots to detect unsaved changes (reset is ONLY available before saving changes)
@@ -1055,26 +1132,11 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
 
   // Save All Changes: Persists current video order, custom titles, categories, and uploads
   const handleSaveAllChanges = () => {
-    try {
-      localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(catalogVideos));
-      localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(categories));
-
-      const customOnly = catalogVideos.filter((v) => v.isCustom);
-      localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(customOnly));
-
-      // Synchronize saved snapshots with current state (so hasUnsavedChanges becomes false)
-      setSavedVideosSnapshot(catalogVideos);
-      setSavedCategoriesSnapshot(categories);
-
-      window.dispatchEvent(new Event('sync-custom-videos'));
-
-      setSaveToastMsg('All video reorderings, renames, categories & custom uploads saved successfully!');
-      setTimeout(() => {
-        setSaveToastMsg('');
-      }, 3500);
-    } catch (err) {
-      console.error('Failed saving all changes', err);
-    }
+    persistAndSyncCatalog(catalogVideos, categories);
+    setSaveToastMsg('All video reorderings, renames, categories & custom uploads saved successfully!');
+    setTimeout(() => {
+      setSaveToastMsg('');
+    }, 3500);
   };
 
   // Reset Unsaved Changes: Reverts unsaved edits back to last saved state (only executable before save)
