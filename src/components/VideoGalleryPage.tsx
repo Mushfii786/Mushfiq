@@ -7,6 +7,7 @@ import { getVideoBlob, deleteVideoBlob, clearAllVideoBlobs } from '../utils/vide
 import { AddGoogleDriveVideoModal } from './AddGoogleDriveVideoModal';
 import { AdminAuthModal } from './AdminAuthModal';
 import { ThumbnailEditStudioModal } from './ThumbnailEditStudioModal';
+import { fetchCatalogFromFirebase, saveCatalogToFirebase, subscribeToCatalog } from '../utils/firebase';
 
 interface VideoGalleryPageProps {
   onClose: () => void;
@@ -760,7 +761,7 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
     };
   }, [openMenuVideoId]);
 
-  // Helper to automatically persist and synchronize catalog & categories instantly across tabs, windows, and viewers
+  // Helper to automatically persist and synchronize catalog & categories instantly across tabs, windows, viewers, and Firebase Firestore
   const persistAndSyncCatalog = (videos: VideoGalleryItem[], cats: string[]) => {
     try {
       localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(videos));
@@ -770,6 +771,9 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
 
       setSavedVideosSnapshot(videos);
       setSavedCategoriesSnapshot(cats);
+
+      // Save to Firebase Firestore database
+      saveCatalogToFirebase(videos, cats);
 
       window.dispatchEvent(new Event('sync-custom-videos'));
 
@@ -783,8 +787,36 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
     }
   };
 
-  // Cross-tab & Cross-session Sync Listener
+  // Initialize and subscribe to Firebase Firestore for real-time updates
   useEffect(() => {
+    // Fetch initial from Firebase
+    fetchCatalogFromFirebase().then((data) => {
+      if (data && Array.isArray(data.videos) && data.videos.length > 0) {
+        setCatalogVideos(data.videos);
+        setSavedVideosSnapshot(data.videos);
+        localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(data.videos));
+      }
+      if (data && Array.isArray(data.categories) && data.categories.length > 0) {
+        setCategories(data.categories);
+        setSavedCategoriesSnapshot(data.categories);
+        localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(data.categories));
+      }
+    });
+
+    // Subscribe to real-time Firestore updates
+    const unsubscribe = subscribeToCatalog((data) => {
+      if (data && Array.isArray(data.videos) && data.videos.length > 0) {
+        setCatalogVideos(data.videos);
+        setSavedVideosSnapshot(data.videos);
+        localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(data.videos));
+      }
+      if (data && Array.isArray(data.categories) && data.categories.length > 0) {
+        setCategories(data.categories);
+        setSavedCategoriesSnapshot(data.categories);
+        localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(data.categories));
+      }
+    });
+
     let bc: BroadcastChannel | null = null;
     try {
       bc = new BroadcastChannel('portfolio_sync_channel');
@@ -854,6 +886,7 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('sync-custom-videos', handleSyncEvent);
       if (bc) bc.close();
+      if (unsubscribe) unsubscribe();
     };
   }, []);
 

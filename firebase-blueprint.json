@@ -1,0 +1,32 @@
+{
+  "entities": {
+    "PortfolioCatalog": {
+      "title": "Portfolio Catalog",
+      "description": "Videography showcase catalog and categories",
+      "type": "object",
+      "properties": {
+        "videos": {
+          "type": "array",
+          "description": "List of video items"
+        },
+        "categories": {
+          "type": "array",
+          "description": "List of category names"
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Last update timestamp"
+        }
+      },
+      "required": ["videos", "categories", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/portfolios/{catalogId}": {
+      "schema": {
+        "$ref": "PortfolioCatalog"
+      },
+      "description": "Portfolio catalog document storing videos and categories"
+    }
+  }
+}
