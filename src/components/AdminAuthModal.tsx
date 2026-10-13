@@ -25,6 +25,7 @@ import {
   Check
 } from 'lucide-react';
 import { VideoGalleryItem } from './VideoGalleryPage';
+import { fetchAdminCredsFromFirebase, saveAdminCredsToFirebase, subscribeToContactMessages } from '../utils/firebase';
 
 interface AdminAuthModalProps {
   isOpen: boolean;
@@ -100,6 +101,23 @@ export function AdminAuthModal({
     return { id: DEFAULT_ADMIN_ID, pass: DEFAULT_ADMIN_PASS };
   };
 
+  const [messages, setMessages] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchAdminCredsFromFirebase().then((creds) => {
+      if (creds && creds.id && creds.pass) {
+        try {
+          localStorage.setItem(CREDS_STORAGE_KEY, JSON.stringify(creds));
+        } catch {}
+      }
+    });
+
+    const unsubscribe = subscribeToContactMessages((msgs) => {
+      setMessages(msgs);
+    });
+    return () => unsubscribe();
+  }, []);
+
   // Check initial session
   useEffect(() => {
     try {
@@ -170,7 +188,7 @@ export function AdminAuthModal({
     }
   };
 
-  const handleSaveNewCreds = (e: React.FormEvent) => {
+  const handleSaveNewCreds = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAdminId.trim() || !newAdminPass.trim()) {
       setCredChangeMsg('Both Admin ID and Password are required.');
@@ -179,7 +197,8 @@ export function AdminAuthModal({
     const updated = { id: newAdminId.trim(), pass: newAdminPass.trim() };
     try {
       localStorage.setItem(CREDS_STORAGE_KEY, JSON.stringify(updated));
-      setCredChangeMsg('Credentials updated successfully!');
+      await saveAdminCredsToFirebase(updated.id, updated.pass);
+      setCredChangeMsg('Credentials updated & saved to Firebase!');
       setTimeout(() => {
         setIsChangingCreds(false);
         setCredChangeMsg('');
@@ -187,7 +206,7 @@ export function AdminAuthModal({
         setNewAdminPass('');
       }, 1500);
     } catch {
-      setCredChangeMsg('Failed to save new credentials to local storage.');
+      setCredChangeMsg('Failed to save new credentials.');
     }
   };
 
@@ -762,6 +781,35 @@ export function AdminAuthModal({
                   <Plus className="w-4 h-4 stroke-[2.5]" />
                   <span>+ Add Video from Gallery or Drive</span>
                 </button>
+              </div>
+
+              {/* Contact Messages Inbox */}
+              <div className="p-5 rounded-3xl bg-neutral-900/90 border border-white/10 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-2">
+                    <Mail className="w-4 h-4" />
+                    <span>Contact Messages Inbox</span>
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-[10px] font-mono font-medium">
+                    {messages.length} Received
+                  </span>
+                </div>
+                <div className="max-h-48 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                  {messages.length === 0 ? (
+                    <p className="text-xs text-neutral-500 italic py-2 text-center">No contact messages received yet.</p>
+                  ) : (
+                    messages.map((msg) => (
+                      <div key={msg.id} className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-1 text-xs">
+                        <div className="flex items-center justify-between font-mono text-[11px]">
+                          <span className="text-white font-semibold">{msg.name || 'Anonymous'}</span>
+                          <span className="text-neutral-400">{msg.createdAt ? new Date(msg.createdAt).toLocaleDateString() : ''}</span>
+                        </div>
+                        <p className="text-neutral-300 font-sans text-xs line-clamp-2">{msg.message}</p>
+                        <p className="text-[10px] text-blue-400 font-mono">{msg.email}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
 
 

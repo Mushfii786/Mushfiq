@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, collection, addDoc, getDocs, onSnapshot, query, orderBy } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
@@ -8,6 +8,7 @@ const db = getFirestore(app, firebaseConfig.firestoreDatabaseId || '(default)');
 export { app, db };
 
 const CATALOG_DOC_REF = doc(db, 'portfolios', 'videography_catalog');
+const ADMIN_CREDS_REF = doc(db, 'portfolios', 'admin_credentials');
 
 export async function fetchCatalogFromFirebase(): Promise<{ videos: any[]; categories: string[] } | null> {
   try {
@@ -42,5 +43,65 @@ export function subscribeToCatalog(callback: (data: { videos: any[]; categories:
     }
   }, (err) => {
     console.error('Firestore subscription error:', err);
+  });
+}
+
+// Admin Credentials sync with Firebase
+export async function fetchAdminCredsFromFirebase(): Promise<{ id: string; pass: string } | null> {
+  try {
+    const snap = await getDoc(ADMIN_CREDS_REF);
+    if (snap.exists()) {
+      return snap.data() as { id: string; pass: string };
+    }
+    return null;
+  } catch (err) {
+    console.error('Error fetching admin credentials from Firebase:', err);
+    return null;
+  }
+}
+
+export async function saveAdminCredsToFirebase(id: string, pass: string): Promise<void> {
+  try {
+    await setDoc(ADMIN_CREDS_REF, {
+      id,
+      pass,
+      updatedAt: Date.now()
+    }, { merge: true });
+  } catch (err) {
+    console.error('Error saving admin credentials to Firebase:', err);
+  }
+}
+
+// Contact messages storage in Firebase
+export async function saveContactMessageToFirebase(messageData: Record<string, any>): Promise<void> {
+  try {
+    await addDoc(collection(db, 'contact_messages'), {
+      ...messageData,
+      createdAt: Date.now()
+    });
+  } catch (err) {
+    console.error('Error saving contact message to Firebase:', err);
+    throw err;
+  }
+}
+
+export async function fetchContactMessagesFromFirebase(): Promise<any[]> {
+  try {
+    const q = query(collection(db, 'contact_messages'), orderBy('createdAt', 'desc'));
+    const snap = await getDocs(q);
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (err) {
+    console.error('Error fetching contact messages from Firebase:', err);
+    return [];
+  }
+}
+
+export function subscribeToContactMessages(callback: (messages: any[]) => void) {
+  const q = query(collection(db, 'contact_messages'), orderBy('createdAt', 'desc'));
+  return onSnapshot(q, (snapshot) => {
+    const messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    callback(messages);
+  }, (err) => {
+    console.error('Contact messages subscription error:', err);
   });
 }

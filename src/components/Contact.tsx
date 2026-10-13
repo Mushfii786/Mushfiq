@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import confetti from 'canvas-confetti';
 import { Mail, Phone, MapPin, Send, Instagram, Github, Linkedin, MessageSquare, Globe, Check, Loader2 } from 'lucide-react';
 import { siteConfig } from '../config/site';
+import { saveContactMessageToFirebase } from '../utils/firebase';
 
 export function Contact() {
   const [formSubmitted, setFormSubmitted] = useState(false);
@@ -52,6 +53,12 @@ export function Contact() {
         },
         body: JSON.stringify(payload)
       });
+
+      try {
+        await saveContactMessageToFirebase(payload);
+      } catch (fbErr) {
+        console.error('Firebase save error:', fbErr);
+      }
 
       setFormSubmitted(true);
       try {
