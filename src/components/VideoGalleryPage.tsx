@@ -335,6 +335,15 @@ export const videoGalleryItems: VideoGalleryItem[] = [
   }
 ];
 
+const cleanCategoryText = (str: string) => {
+  if (!str) return '';
+  return str
+    .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+    .replace(/[^\x00-\x7F]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
 const DEFAULT_CATEGORIES = ['ALL', 'GALLERY UPLOADS', 'GOOGLE DRIVE', 'CINEMATIC REELS', 'DRONE & FPV', 'COMMERCIAL', 'MOTION & VFX', 'DOCUMENTARY'];
 const CATEGORIES_STORAGE_KEY = 'mushfiq_custom_categories_v2';
 const VIDEOS_CATALOG_STORAGE_KEY = 'mushfiq_custom_videos_catalog_v2';
@@ -516,18 +525,18 @@ function GalleryVideoCard({
       onClick={() => {
         if (!draggedVideoId) setActiveVideo(item);
       }}
-      className={`group relative flex flex-col p-2 pb-2.5 sm:p-3 sm:pb-3.5 rounded-[18px] sm:rounded-[24px] md:rounded-[28px] bg-gradient-to-b from-[#181b26]/95 via-[#0e1017]/98 to-[#090a0d]/98 border transition-all duration-300 animate-fadeIn break-inside-avoid w-full mb-3 sm:mb-4 md:mb-6 shadow-[0_12px_40px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.12)] ${
+      className={`group relative flex flex-col p-2.5 pb-3 sm:p-3.5 sm:pb-4 rounded-[20px] sm:rounded-[26px] md:rounded-[30px] bg-gradient-to-b from-[#1c2235]/95 via-[#101422]/98 to-[#0a0c14]/99 border transition-all duration-300 animate-fadeIn break-inside-avoid w-full mb-3 sm:mb-5 md:mb-7 shadow-[0_16px_50px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.18)] ${
         openMenuVideoId === item.id ? 'z-40' : 'z-10'
       } ${
         isBeingDragged
           ? 'opacity-35 scale-95 border-dashed border-blue-400 bg-blue-950/20 cursor-grabbing shadow-none'
           : isDragTarget
-          ? 'scale-[1.02] border-cyan-400 bg-cyan-950/30 shadow-[0_0_35px_rgba(6,182,212,0.6)] cursor-copy ring-2 ring-cyan-400/40'
-          : 'border-white/[0.09] hover:border-blue-400/60 hover:shadow-[0_24px_60px_rgba(0,0,0,0.95),0_0_35px_rgba(59,130,246,0.28),inset_0_1px_0_rgba(255,255,255,0.25)] hover:-translate-y-1 active:scale-[0.98] cursor-pointer'
+          ? 'scale-[1.02] border-cyan-400 bg-cyan-950/30 shadow-[0_0_40px_rgba(6,182,212,0.65)] cursor-copy ring-2 ring-cyan-400/40'
+          : 'border-white/12 hover:border-blue-400/70 hover:shadow-[0_30px_70px_rgba(0,0,0,0.98),0_0_40px_rgba(59,130,246,0.35),inset_0_1px_0_rgba(255,255,255,0.3)] hover:-translate-y-1.5 active:scale-[0.98] cursor-pointer'
       }`}
     >
       {/* Top Metallic Glass Sheen Highlight */}
-      <div className="absolute top-0 inset-x-6 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none group-hover:via-blue-300/50 transition-colors duration-500" />
+      <div className="absolute top-0 inset-x-6 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent pointer-events-none group-hover:via-blue-300/70 transition-colors duration-500" />
 
       {/* Inner Video Poster Frame with video-aware aspect ratio (landscape or portrait) */}
       <div className={`relative w-full ${boxAspectClass} rounded-[14px] sm:rounded-[20px] md:rounded-[22px] overflow-hidden bg-neutral-950 border border-white/[0.1] group-hover:border-white/[0.22] transition-colors duration-300 shadow-inner`}>
@@ -565,9 +574,9 @@ function GalleryVideoCard({
           />
         )}
 
-        {/* Top Right Admin Controls */}
+        {/* Top Right Admin Controls - Premium Landscape & Portrait Compatible */}
         {isAdminAuthenticated && (
-          <div className="absolute top-2 sm:top-2.5 right-2 sm:right-2.5 z-30">
+          <div className="absolute top-2.5 sm:top-3.5 right-2.5 sm:right-3.5 z-40">
             <div className="relative">
               <button
                 type="button"
@@ -575,21 +584,23 @@ function GalleryVideoCard({
                   e.stopPropagation();
                   setOpenMenuVideoId((prev) => (prev === item.id ? null : item.id));
                 }}
-                title="Reel Edit Menu (Three Dots)"
-                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer backdrop-blur-xl shadow-lg active:scale-90 border ${
+                title="Cinematic Reel Edit Options"
+                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer backdrop-blur-2xl shadow-[0_8px_30px_rgba(0,0,0,0.85)] active:scale-95 border ${
                   openMenuVideoId === item.id
-                    ? 'bg-blue-600 text-white border-blue-400 ring-2 ring-blue-400/50 shadow-[0_0_20px_rgba(59,130,246,0.7)]'
-                    : 'bg-black/80 hover:bg-white text-neutral-300 hover:text-black border-white/20 hover:border-white'
+                    ? 'bg-gradient-to-tr from-blue-600 via-indigo-600 to-blue-500 text-white border-blue-300 ring-4 ring-blue-500/40 shadow-[0_0_25px_rgba(59,130,246,0.8)] scale-105'
+                    : 'bg-black/85 hover:bg-gradient-to-tr hover:from-blue-600 hover:to-indigo-600 text-white border-white/30 hover:border-blue-400 hover:scale-105'
                 }`}
               >
-                <MoreVertical className="w-3.5 h-3.5" />
+                <MoreVertical className="w-4 h-4" />
               </button>
 
-              {/* Dropdown Menu for Edits - Compact Premium Icon Palette */}
+              {/* Dropdown Menu for Edits - Horizontal for landscape videos, vertical for portrait */}
               {openMenuVideoId === item.id && (
                 <div
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute right-0 top-full mt-1.5 flex flex-col items-center gap-1.5 p-1.5 rounded-2xl bg-[#090b12]/98 border border-white/20 shadow-[0_16px_40px_rgba(0,0,0,0.98),0_0_25px_rgba(37,99,235,0.35)] backdrop-blur-2xl z-50 animate-fadeIn select-none"
+                  className={`absolute right-0 top-full mt-2 flex ${
+                    isLandscape ? 'flex-row items-center gap-1.5 p-2' : 'flex-col items-center gap-1.5 p-2'
+                  } rounded-2xl bg-neutral-950/98 border border-white/30 shadow-[0_20px_60px_rgba(0,0,0,0.99),0_0_35px_rgba(37,99,235,0.45)] backdrop-blur-3xl z-50 animate-fadeIn select-none`}
                 >
                   <button
                     type="button"
@@ -597,9 +608,9 @@ function GalleryVideoCard({
                       setOpenMenuVideoId(null);
                       setEditingVideo(item);
                     }}
-                    title="Edit Details"
+                    title="Edit Reel Details"
                     aria-label="Edit Details"
-                    className="w-8 h-8 rounded-xl bg-blue-500/15 hover:bg-blue-600 border border-blue-400/25 hover:border-blue-400 flex items-center justify-center text-blue-400 hover:text-white transition-all active:scale-90 cursor-pointer shadow-sm group"
+                    className="w-9 h-9 rounded-xl bg-blue-500/20 hover:bg-blue-600 border border-blue-400/35 hover:border-blue-300 flex items-center justify-center text-blue-400 hover:text-white transition-all duration-200 active:scale-90 cursor-pointer shadow-md group"
                   >
                     <Edit3 className="w-4 h-4 group-hover:scale-110 transition-transform" />
                   </button>
@@ -610,14 +621,14 @@ function GalleryVideoCard({
                       setOpenMenuVideoId(null);
                       setThumbnailStudioVideo(item);
                     }}
-                    title="Cover Frame"
+                    title="Cover Frame Studio"
                     aria-label="Cover Frame"
-                    className="w-8 h-8 rounded-xl bg-purple-500/15 hover:bg-purple-600 border border-purple-400/25 hover:border-purple-400 flex items-center justify-center text-purple-400 hover:text-white transition-all active:scale-90 cursor-pointer shadow-sm group"
+                    className="w-9 h-9 rounded-xl bg-purple-500/20 hover:bg-purple-600 border border-purple-400/35 hover:border-purple-300 flex items-center justify-center text-purple-400 hover:text-white transition-all duration-200 active:scale-90 cursor-pointer shadow-md group"
                   >
                     <Film className="w-4 h-4 group-hover:scale-110 transition-transform" />
                   </button>
 
-                  <div className="w-5 h-px bg-white/15 my-0.5" />
+                  <div className={isLandscape ? 'w-px h-6 bg-white/25 mx-0.5' : 'w-6 h-px bg-white/20 my-0.5'} />
 
                   <button
                     type="button"
@@ -627,7 +638,7 @@ function GalleryVideoCard({
                     }}
                     title="Delete Reel"
                     aria-label="Delete Reel"
-                    className="w-8 h-8 rounded-xl bg-red-500/15 hover:bg-red-600 border border-red-500/25 hover:border-red-400 flex items-center justify-center text-red-400 hover:text-white transition-all active:scale-90 cursor-pointer shadow-sm group"
+                    className="w-9 h-9 rounded-xl bg-red-500/20 hover:bg-red-600 border border-red-500/35 hover:border-red-400 flex items-center justify-center text-red-400 hover:text-white transition-all duration-200 active:scale-90 cursor-pointer shadow-md group"
                   >
                     <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
                   </button>
@@ -683,7 +694,9 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
       const saved = localStorage.getItem(CATEGORIES_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((c: string) => cleanCategoryText(c) || c).filter(Boolean);
+        }
       }
     } catch {
       // fallback
@@ -797,9 +810,10 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
         localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(data.videos));
       }
       if (data && Array.isArray(data.categories) && data.categories.length > 0) {
-        setCategories(data.categories);
-        setSavedCategoriesSnapshot(data.categories);
-        localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(data.categories));
+        const cleanedCats = data.categories.map((c: string) => cleanCategoryText(c) || c).filter(Boolean);
+        setCategories(cleanedCats);
+        setSavedCategoriesSnapshot(cleanedCats);
+        localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(cleanedCats));
       }
     });
 
@@ -811,9 +825,10 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
         localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(data.videos));
       }
       if (data && Array.isArray(data.categories) && data.categories.length > 0) {
-        setCategories(data.categories);
-        setSavedCategoriesSnapshot(data.categories);
-        localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(data.categories));
+        const cleanedCats = data.categories.map((c: string) => cleanCategoryText(c) || c).filter(Boolean);
+        setCategories(cleanedCats);
+        setSavedCategoriesSnapshot(cleanedCats);
+        localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(cleanedCats));
       }
     });
 
@@ -1380,8 +1395,9 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
         {/* Right / Category Filter Pills */}
         <div className="flex items-center gap-1.5 sm:gap-2 p-1.5 rounded-full bg-gradient-to-r from-neutral-950/90 via-neutral-900/95 to-neutral-950/90 border border-white/10 backdrop-blur-2xl overflow-x-auto touch-pan-x pb-1.5 lg:pb-1.5 no-scrollbar shadow-[0_8px_32px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.1)] -mx-1 px-1.5 sm:mx-0 sm:px-2">
           {categories.map((cat) => {
-            const isSelected = selectedCategory === cat;
-            const isRemovable = cat !== 'ALL';
+            const cleanCat = cat.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
+            const isSelected = selectedCategory === cat || selectedCategory === cleanCat;
+            const isRemovable = cat !== 'ALL' && cleanCat !== 'ALL';
 
             const getCategoryIcon = (categoryName: string) => {
               const upper = categoryName.toUpperCase();
@@ -1394,13 +1410,13 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
               return Film;
             };
 
-            const CatIcon = getCategoryIcon(cat);
+            const CatIcon = getCategoryIcon(cleanCat);
 
             return (
               <div key={cat} className="relative flex items-center group/cat shrink-0">
                 <button
                   onClick={() => handleCategoryClick(cat)}
-                  className={`relative px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-300 cursor-pointer whitespace-nowrap flex items-center gap-2 z-10 select-none shrink-0 ${
+                  className={`relative px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs font-bold tracking-wider uppercase transition-all duration-300 cursor-pointer whitespace-nowrap flex items-center gap-2 z-10 select-none shrink-0 ${
                     isSelected
                       ? 'text-white'
                       : 'text-neutral-400 hover:text-white hover:bg-white/[0.06]'
@@ -1414,16 +1430,16 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
                     />
                   )}
                   <CatIcon className={`w-3.5 h-3.5 transition-colors duration-200 ${isSelected ? 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]' : 'text-neutral-400 group-hover/cat:text-neutral-200'}`} />
-                  <span className="font-medium tracking-wide">{cat}</span>
+                  <span className="font-['Syne'] font-extrabold tracking-wider">{cleanCat}</span>
                 </button>
 
                 {/* Custom Removal of Categories in Admin Mode */}
                 {isAdminAuthenticated && isRemovable && (
                   <button
                     onClick={(e) => handleDeleteCategory(cat, e)}
-                    title={`Remove "${cat}" category filter tab`}
+                    title={`Remove "${cleanCat}" category filter tab`}
                     className="w-4 h-4 rounded-full bg-red-950/80 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/40 text-[9px] flex items-center justify-center transition-all cursor-pointer mr-0.5 hover:scale-110 active:scale-90 z-20 shadow-sm"
-                    aria-label={`Remove category ${cat}`}
+                    aria-label={`Remove category ${cleanCat}`}
                   >
                     <X className="w-2.5 h-2.5" />
                   </button>

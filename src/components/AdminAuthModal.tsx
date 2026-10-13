@@ -22,17 +22,20 @@ import {
   Copy,
   ArrowLeft,
   ShieldCheck,
-  Check
+  Check,
+  Camera,
+  Image as ImageIcon
 } from 'lucide-react';
 import { VideoGalleryItem } from './VideoGalleryPage';
-import { fetchAdminCredsFromFirebase, saveAdminCredsToFirebase, subscribeToContactMessages } from '../utils/firebase';
+import { fetchAdminCredsFromFirebase, saveAdminCredsToFirebase } from '../utils/firebase';
 
 interface AdminAuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onOpenAddVideoModal: () => void;
-  customVideos: VideoGalleryItem[];
-  onDeleteCustomVideo: (id: string, e: React.MouseEvent) => void;
+  onOpenAddVideoModal?: () => void;
+  onOpenAddPhotoModal?: () => void;
+  customVideos?: VideoGalleryItem[];
+  onDeleteCustomVideo?: (id: string, e: React.MouseEvent) => void;
   onSelectVideo?: (video: VideoGalleryItem) => void;
   isAuthenticated: boolean;
   setIsAuthenticated: (val: boolean) => void;
@@ -47,7 +50,8 @@ export function AdminAuthModal({
   isOpen,
   onClose,
   onOpenAddVideoModal,
-  customVideos,
+  onOpenAddPhotoModal,
+  customVideos = [],
   onDeleteCustomVideo,
   onSelectVideo,
   isAuthenticated,
@@ -101,8 +105,6 @@ export function AdminAuthModal({
     return { id: DEFAULT_ADMIN_ID, pass: DEFAULT_ADMIN_PASS };
   };
 
-  const [messages, setMessages] = useState<any[]>([]);
-
   useEffect(() => {
     fetchAdminCredsFromFirebase().then((creds) => {
       if (creds && creds.id && creds.pass) {
@@ -111,11 +113,6 @@ export function AdminAuthModal({
         } catch {}
       }
     });
-
-    const unsubscribe = subscribeToContactMessages((msgs) => {
-      setMessages(msgs);
-    });
-    return () => unsubscribe();
   }, []);
 
   // Check initial session
@@ -756,63 +753,69 @@ export function AdminAuthModal({
                 </div>
               )}
 
-              {/* Primary Action: Add Video from Gallery or Drive */}
-              <div className="p-5 rounded-3xl bg-gradient-to-b from-[#10131d]/90 to-[#090b12]/95 border border-blue-500/30 space-y-3.5 shadow-2xl backdrop-blur-xl">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-blue-300 font-bold uppercase tracking-wider flex items-center gap-2">
-                    <Video className="w-4 h-4 text-blue-400" />
-                    <span>Video Upload & Streaming</span>
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-blue-500/15 border border-blue-400/30 text-blue-300 text-[10px] font-mono font-medium">
-                    {customVideos.length} Custom Added
-                  </span>
+              {/* Photo Upload & Photography Section */}
+              {Boolean(onOpenAddPhotoModal || !onOpenAddVideoModal) && (
+                <div className="p-5 rounded-3xl bg-gradient-to-b from-[#181320]/90 to-[#0d0914]/95 border border-purple-500/30 space-y-3.5 shadow-2xl backdrop-blur-xl">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-purple-300 font-bold uppercase tracking-wider flex items-center gap-2">
+                      <Camera className="w-4 h-4 text-purple-400" />
+                      <span>Photo Upload & Photography Hub</span>
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-purple-500/15 border border-purple-400/30 text-purple-300 text-[10px] font-mono font-medium">
+                      Gallery Master
+                    </span>
+                  </div>
+                  <p className="text-xs text-neutral-300">
+                    Select and upload high-resolution photography, poster designs, or artwork directly from your device gallery with live preview.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      if (onOpenAddPhotoModal) {
+                        onOpenAddPhotoModal();
+                      }
+                    }}
+                    className="w-full py-3 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:brightness-110 text-white text-xs font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(168,85,247,0.4)] cursor-pointer hover:scale-[1.01] active:scale-95"
+                  >
+                    <Plus className="w-4 h-4 stroke-[2.5]" />
+                    <span>+ Upload New Photo from Gallery</span>
+                  </button>
                 </div>
-                <p className="text-xs text-neutral-300">
-                  Select and upload video files directly from your gallery/device or stream from Google Drive in full HD.
-                </p>
+              )}
 
-                <button
-                  onClick={() => {
-                    onClose();
-                    onOpenAddVideoModal();
-                  }}
-                  className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#2563EB] via-[#4F46E5] to-[#3B82F6] hover:brightness-110 text-white text-xs font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(37,99,235,0.4)] cursor-pointer"
-                >
-                  <Plus className="w-4 h-4 stroke-[2.5]" />
-                  <span>+ Add Video from Gallery or Drive</span>
-                </button>
-              </div>
+              {/* Video Upload & Streaming Section */}
+              {Boolean(onOpenAddVideoModal) && (
+                <div className="p-5 rounded-3xl bg-gradient-to-b from-[#10131d]/90 to-[#090b12]/95 border border-blue-500/30 space-y-3.5 shadow-2xl backdrop-blur-xl">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-blue-300 font-bold uppercase tracking-wider flex items-center gap-2">
+                      <Video className="w-4 h-4 text-blue-400" />
+                      <span>Video Upload & Streaming</span>
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-blue-500/15 border border-blue-400/30 text-blue-300 text-[10px] font-mono font-medium">
+                      {customVideos.length} Custom Added
+                    </span>
+                  </div>
+                  <p className="text-xs text-neutral-300">
+                    Select and upload video files directly from your gallery/device or stream from Google Drive in full HD.
+                  </p>
 
-              {/* Contact Messages Inbox */}
-              <div className="p-5 rounded-3xl bg-neutral-900/90 border border-white/10 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-2">
-                    <Mail className="w-4 h-4" />
-                    <span>Contact Messages Inbox</span>
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-[10px] font-mono font-medium">
-                    {messages.length} Received
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      if (onOpenAddVideoModal) {
+                        onOpenAddVideoModal();
+                      }
+                    }}
+                    className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#2563EB] via-[#4F46E5] to-[#3B82F6] hover:brightness-110 text-white text-xs font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(37,99,235,0.4)] cursor-pointer hover:scale-[1.01] active:scale-95"
+                  >
+                    <Plus className="w-4 h-4 stroke-[2.5]" />
+                    <span>+ Add Video from Gallery or Drive</span>
+                  </button>
                 </div>
-                <div className="max-h-48 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                  {messages.length === 0 ? (
-                    <p className="text-xs text-neutral-500 italic py-2 text-center">No contact messages received yet.</p>
-                  ) : (
-                    messages.map((msg) => (
-                      <div key={msg.id} className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-1 text-xs">
-                        <div className="flex items-center justify-between font-mono text-[11px]">
-                          <span className="text-white font-semibold">{msg.name || 'Anonymous'}</span>
-                          <span className="text-neutral-400">{msg.createdAt ? new Date(msg.createdAt).toLocaleDateString() : ''}</span>
-                        </div>
-                        <p className="text-neutral-300 font-sans text-xs line-clamp-2">{msg.message}</p>
-                        <p className="text-[10px] text-blue-400 font-mono">{msg.email}</p>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-
+              )}
 
               {/* Footer Controls: Change Credentials & Sign Out */}
               <div className="pt-3 border-t border-neutral-800/80 flex items-center justify-between gap-3 text-xs font-sans">

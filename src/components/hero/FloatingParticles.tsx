@@ -7,18 +7,22 @@ interface Particle {
   vx: number;
   vy: number;
   alpha: number;
-  targetAlpha: number;
+  baseAlpha: number;
+  maxAlpha: number;
   r: number;
   g: number;
   b: number;
-  pulseSpeed: number;
+  twinkleSpeed: number;
+  twinklePhase: number;
+  layer: number; // 1: background tiny stars, 2: mid stars, 3: foreground glowing stars
 }
 
 const COLOR_PALETTE = [
-  { r: 139, g: 92, b: 246 }, // Purple #8B5CF6
-  { r: 59, g: 130, b: 246 },  // Blue #3B82F6
-  { r: 6, g: 182, b: 212 },   // Cyan #06B6D4
-  { r: 255, g: 255, b: 255 }  // White
+  { r: 255, g: 255, b: 255 }, // Starlight White
+  { r: 167, g: 139, b: 250 }, // Soft Violet #A78BFA
+  { r: 96, g: 165, b: 250 },  // Electric Blue #60A5FA
+  { r: 45, g: 212, b: 191 },  // Teal / Cyan #2DD4BF
+  { r: 244, g: 114, b: 182 }  // Cosmic Pink #F472B6
 ];
 
 export function FloatingParticles() {
@@ -44,25 +48,33 @@ export function FloatingParticles() {
 
     let mouseX = -1000;
     let mouseY = -1000;
+    let targetMouseX = -1000;
+    let targetMouseY = -1000;
 
-    // Optimized particle count for 120 FPS silky smooth performance
-    const particleCount = Math.min(Math.floor((width * height) / 22000), 50);
+    // High-density premium cosmic starfield count
+    const particleCount = Math.min(Math.floor((width * height) / 14000), 120);
     const particles: Particle[] = [];
 
     for (let i = 0; i < particleCount; i++) {
       const color = COLOR_PALETTE[Math.floor(Math.random() * COLOR_PALETTE.length)];
+      const layer = Math.random() < 0.5 ? 1 : Math.random() < 0.85 ? 2 : 3;
+      const size = layer === 1 ? Math.random() * 1.0 + 0.4 : layer === 2 ? Math.random() * 1.8 + 0.8 : Math.random() * 2.8 + 1.2;
+      
       particles.push({
         x: Math.random() * width,
         y: Math.random() * height,
-        size: Math.random() * 2 + 0.8,
-        vx: (Math.random() - 0.5) * 0.25,
-        vy: -(Math.random() * 0.35 + 0.1),
-        alpha: Math.random() * 0.5 + 0.2,
-        targetAlpha: Math.random() * 0.7 + 0.2,
+        size,
+        vx: (Math.random() - 0.5) * (0.15 * layer),
+        vy: -((Math.random() * 0.25 + 0.05) * layer),
+        alpha: Math.random() * 0.6 + 0.2,
+        baseAlpha: Math.random() * 0.3 + 0.1,
+        maxAlpha: Math.random() * 0.85 + 0.3,
         r: color.r,
         g: color.g,
         b: color.b,
-        pulseSpeed: Math.random() * 0.012 + 0.004,
+        twinkleSpeed: Math.random() * 0.03 + 0.008,
+        twinklePhase: Math.random() * Math.PI * 2,
+        layer,
       });
     }
 
@@ -80,13 +92,13 @@ export function FloatingParticles() {
     const handleMouseMove = (e: MouseEvent) => {
       if (!canvas) return;
       const canvasRect = canvas.getBoundingClientRect();
-      mouseX = e.clientX - canvasRect.left;
-      mouseY = e.clientY - canvasRect.top;
+      targetMouseX = e.clientX - canvasRect.left;
+      targetMouseY = e.clientY - canvasRect.top;
     };
 
     const handleMouseLeave = () => {
-      mouseX = -1000;
-      mouseY = -1000;
+      targetMouseX = -1000;
+      targetMouseY = -1000;
     };
 
     window.addEventListener('resize', handleResize, { passive: true });
@@ -96,58 +108,86 @@ export function FloatingParticles() {
     let lastTime = performance.now();
 
     const render = (now: number) => {
-      const delta = Math.min((now - lastTime) / 1000, 0.033); // Clamp delta to avoid leaps
+      const delta = Math.min((now - lastTime) / 1000, 0.033);
       lastTime = now;
+
+      // Smooth lerp mouse position
+      mouseX += (targetMouseX - mouseX) * 0.1;
+      mouseY += (targetMouseY - mouseY) * 0.1;
 
       ctx.clearRect(0, 0, width, height);
 
+      // Draw subtle constellation connection lines between close foreground/mid particles
+      ctx.lineWidth = 0.5;
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const p1 = particles[i];
+          const p2 = particles[j];
+          if (p1.layer >= 2 && p2.layer >= 2) {
+            const dx = p1.x - p2.x;
+            const dy = p1.y - p2.y;
+            const distSq = dx * dx + dy * dy;
+            if (distSq < 11000) { // ~105px distance threshold
+              const dist = Math.sqrt(distSq);
+              const alphaFactor = (1 - dist / 105) * 0.14 * Math.min(p1.alpha, p2.alpha);
+              ctx.strokeStyle = `rgba(139, 92, 246, ${alphaFactor})`;
+              ctx.beginPath();
+              ctx.moveTo(p1.x, p1.y);
+              ctx.lineTo(p2.x, p2.y);
+              ctx.stroke();
+            }
+          }
+        }
+      }
+
+      // Render particles
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
 
-        // Move particle
+        // Move particle with parallax speed
         p.x += p.vx * (delta * 120);
         p.y += p.vy * (delta * 120);
 
         // Wrap around screen edges
-        if (p.y < -10) {
-          p.y = height + 10;
+        if (p.y < -20) {
+          p.y = height + 20;
           p.x = Math.random() * width;
         }
-        if (p.x < -10) p.x = width + 10;
-        if (p.x > width + 10) p.x = -10;
+        if (p.x < -20) p.x = width + 20;
+        if (p.x > width + 20) p.x = -20;
 
-        // Smooth mouse avoidance
+        // Smooth mouse magnetism / push effect
         if (mouseX > 0 && mouseY > 0) {
           const dx = mouseX - p.x;
           const dy = mouseY - p.y;
           const distSq = dx * dx + dy * dy;
-          const maxDist = 130;
+          const maxDist = 150;
           const maxDistSq = maxDist * maxDist;
 
           if (distSq < maxDistSq && distSq > 0) {
             const dist = Math.sqrt(distSq);
             const force = (maxDist - dist) / maxDist;
-            p.x -= (dx / dist) * force * 2.5 * (delta * 120);
-            p.y -= (dy / dist) * force * 2.5 * (delta * 120);
+            p.x -= (dx / dist) * force * 3.5 * (delta * 120);
+            p.y -= (dy / dist) * force * 3.5 * (delta * 120);
           }
         }
 
-        // Pulse opacity smoothly
-        p.alpha += (p.targetAlpha - p.alpha) * p.pulseSpeed * (delta * 120);
-        if (Math.abs(p.targetAlpha - p.alpha) < 0.02) {
-          p.targetAlpha = Math.random() * 0.75 + 0.15;
+        // Luxurious organic twinkle / scintillation
+        p.twinklePhase += p.twinkleSpeed * (delta * 60);
+        p.alpha = p.baseAlpha + (Math.sin(p.twinklePhase) + 1) * 0.5 * (p.maxAlpha - p.baseAlpha);
+
+        // Draw outer glowing starlight halo for foreground/mid stars
+        if (p.layer >= 2) {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size * 3.2, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${p.r}, ${p.g}, ${p.b}, ${p.alpha * 0.22})`;
+          ctx.fill();
         }
 
-        // Fast GPU-friendly direct drawing without expensive canvas shadowBlur
+        // Draw core star particle
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(${p.r}, ${p.g}, ${p.b}, ${p.alpha})`;
-        ctx.fill();
-
-        // Subtle outer aura ring for glow effect without shadowBlur overhead
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * 2.5, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${p.r}, ${p.g}, ${p.b}, ${p.alpha * 0.18})`;
         ctx.fill();
       }
 

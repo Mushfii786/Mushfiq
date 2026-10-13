@@ -46,6 +46,45 @@ export function subscribeToCatalog(callback: (data: { videos: any[]; categories:
   });
 }
 
+// Photography Catalog sync with Firebase
+const PHOTO_CATALOG_REF = doc(db, 'portfolios', 'photography_catalog');
+
+export async function fetchPhotographyCatalogFromFirebase(): Promise<{ photos: any[]; categories: any[] } | null> {
+  try {
+    const snap = await getDoc(PHOTO_CATALOG_REF);
+    if (snap.exists()) {
+      return snap.data() as { photos: any[]; categories: any[] };
+    }
+    return null;
+  } catch (err) {
+    console.error('Error fetching photography catalog from Firebase:', err);
+    return null;
+  }
+}
+
+export async function savePhotographyCatalogToFirebase(photos: any[], categories: any[]): Promise<void> {
+  try {
+    await setDoc(PHOTO_CATALOG_REF, {
+      photos,
+      categories,
+      updatedAt: Date.now()
+    }, { merge: true });
+  } catch (err) {
+    console.error('Error saving photography catalog to Firebase:', err);
+  }
+}
+
+export function subscribeToPhotographyCatalog(callback: (data: { photos: any[]; categories: any[] }) => void) {
+  return onSnapshot(PHOTO_CATALOG_REF, (snap) => {
+    if (snap.exists()) {
+      const data = snap.data() as { photos: any[]; categories: any[] };
+      callback(data);
+    }
+  }, (err) => {
+    console.error('Firestore photography subscription error:', err);
+  });
+}
+
 // Admin Credentials sync with Firebase
 export async function fetchAdminCredsFromFirebase(): Promise<{ id: string; pass: string } | null> {
   try {
