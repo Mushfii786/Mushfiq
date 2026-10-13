@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Download, FileText } from 'lucide-react';
 import { siteConfig, timelineItems, techStack } from '../config/site';
+import { useFirebaseData } from '../context/FirebaseDataContext';
 
 interface ResumeModalProps {
   isOpen: boolean;
@@ -9,28 +10,40 @@ interface ResumeModalProps {
 }
 
 export function ResumeModal({ isOpen, onClose }: ResumeModalProps) {
+  const { siteProfile, timeline: liveTimeline, techStack: liveTechStack } = useFirebaseData();
+
+  const activeName = siteProfile?.name || siteConfig.name;
+  const activeTitle = siteProfile?.title || siteConfig.title;
+  const activeLocation = siteProfile?.location || siteConfig.location;
+  const activeEmail = siteProfile?.email || siteConfig.email;
+  const activeHandle = siteProfile?.handle || siteConfig.handle;
+  const activeAboutBio = siteProfile?.aboutBio || siteConfig.aboutBio;
+  const activeRoles = siteProfile?.roles || siteConfig.roles;
+  const activeTechStack = (liveTechStack && liveTechStack.length > 0) ? liveTechStack : techStack;
+  const activeTimeline = (liveTimeline && liveTimeline.length > 0) ? liveTimeline : timelineItems;
+
   const handleDownload = () => {
     // Generate clean markdown resume file download
     const content = `
-# ${siteConfig.name}
-${siteConfig.title} | ${siteConfig.location}
-Email: ${siteConfig.email} | Instagram: ${siteConfig.handle}
+# ${activeName}
+${activeTitle} | ${activeLocation}
+Email: ${activeEmail} | Instagram: ${activeHandle}
 
 ## Professional Summary
-${siteConfig.aboutBio}
+${activeAboutBio}
 
 ## Key Skills & Tech Stack
-${techStack.map(t => `- ${t.name} (${t.category})`).join('\n')}
+${activeTechStack.map(t => `- ${t.name} (${t.category})`).join('\n')}
 
 ## Experience & Education
-${timelineItems.map(t => `### ${t.roleOrDegree} - ${t.organization} (${t.period})\n${t.description.map(d => `* ${d}`).join('\n')}`).join('\n\n')}
+${activeTimeline.map(t => `### ${t.roleOrDegree} - ${t.organization} (${t.period})\n${t.description.map(d => `* ${d}`).join('\n')}`).join('\n\n')}
     `.trim();
 
     const blob = new Blob([content], { type: 'text/markdown;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `${siteConfig.name.replace(/\s+/g, '_')}_Resume_2026.md`);
+    link.setAttribute('download', `${activeName.replace(/\s+/g, '_')}_Resume_2026.md`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -65,7 +78,7 @@ ${timelineItems.map(t => `### ${t.roleOrDegree} - ${t.organization} (${t.period}
                 </div>
                 <div>
                   <h3 className="text-lg font-medium text-neutral-900 dark:text-white">
-                    {siteConfig.name} — Curriculum Vitae
+                    {activeName} — Curriculum Vitae
                   </h3>
                   <p className="text-xs text-neutral-500 font-mono">Verified 2026 Edition</p>
                 </div>
@@ -96,7 +109,7 @@ ${timelineItems.map(t => `### ${t.roleOrDegree} - ${t.organization} (${t.period}
                   Executive Summary
                 </h4>
                 <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed text-base">
-                  {siteConfig.aboutBio}
+                  {activeAboutBio}
                 </p>
               </div>
 
@@ -106,7 +119,7 @@ ${timelineItems.map(t => `### ${t.roleOrDegree} - ${t.organization} (${t.period}
                   Core Specializations
                 </h4>
                 <div className="flex flex-wrap gap-2">
-                  {siteConfig.roles.map((r, i) => (
+                  {activeRoles.map((r, i) => (
                     <span
                       key={i}
                       className="px-3 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-xs font-medium text-neutral-800 dark:text-neutral-300 hover:scale-105 transition-transform duration-200 cursor-default"
@@ -123,7 +136,7 @@ ${timelineItems.map(t => `### ${t.roleOrDegree} - ${t.organization} (${t.period}
                   Career Experience
                 </h4>
                 <div className="space-y-6">
-                  {timelineItems.filter(t => t.type === 'experience').map((item) => (
+                  {activeTimeline.filter(t => t.type === 'experience').map((item) => (
                     <div key={item.id} className="border-l-2 border-neutral-200 dark:border-neutral-800 pl-4 space-y-1 hover:border-[#2563EB] transition-colors">
                       <div className="flex justify-between items-start">
                         <h5 className="font-semibold text-neutral-900 dark:text-white text-base">

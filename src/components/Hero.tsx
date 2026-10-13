@@ -6,8 +6,10 @@ import { GradientText } from './hero/GradientText';
 import { HeroDock } from './hero/HeroDock';
 import { CursorGlow } from './hero/CursorGlow';
 import { siteConfig } from '../config/site';
+import { useFirebaseData } from '../context/FirebaseDataContext';
 
 export function Hero() {
+  const { siteProfile } = useFirebaseData();
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Parallax on scroll
@@ -95,7 +97,7 @@ export function Hero() {
         {/* Subtitle Introduction */}
         <motion.div variants={lineVariants} className="max-w-[680px] mx-auto px-2">
           <p className="text-sm sm:text-base md:text-lg text-white/70 font-light leading-relaxed tracking-wide font-sans">
-            Hi, I'm <strong className="font-semibold text-white">Mushfiq</strong>. I transform ideas into cinematic visuals through video editing, photography, videography, photo editing, and creative design.
+            Hi, I'm <strong className="font-semibold text-white">{siteProfile.name || siteConfig.name}</strong>. I transform ideas into cinematic visuals through video editing, photography, videography, photo editing, and creative design.
           </p>
         </motion.div>
 

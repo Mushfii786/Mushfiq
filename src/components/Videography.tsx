@@ -7,7 +7,10 @@ import { VideoLightbox } from './VideoLightbox';
 import { VideoGalleryPage } from './VideoGalleryPage';
 import { CoverFlowGallery, CoverFlowItem } from './CoverFlowGallery';
 
+import { useFirebaseData } from '../context/FirebaseDataContext';
+
 export function Videography() {
+  const { videos: firebaseVideos } = useFirebaseData();
   const [activeVideo, setActiveVideo] = useState<VideoItem | null>(null);
   const [showFullGallery, setShowFullGallery] = useState(false);
   const [videoCoverFlowData, setVideoCoverFlowData] = useState<CoverFlowItem[]>(() => {
@@ -38,6 +41,23 @@ export function Videography() {
       data: v,
     }));
   });
+
+  // Sync with live Firebase videos
+  useEffect(() => {
+    if (firebaseVideos && firebaseVideos.length > 0) {
+      setVideoCoverFlowData(
+        firebaseVideos.slice(0, 15).map((v: any) => ({
+          id: v.id,
+          title: v.title,
+          subtitle: v.caption ? v.caption : `${v.location || v.category || ''} ${v.year ? '• ' + v.year : ''}`.trim(),
+          category: v.category,
+          url: v.url || v.posterUrl,
+          type: 'video',
+          data: v,
+        }))
+      );
+    }
+  }, [firebaseVideos]);
 
   useEffect(() => {
     const handleOpenGallery = () => {

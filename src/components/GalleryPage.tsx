@@ -1748,6 +1748,24 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
           </div>
         )}
       </AnimatePresence>
+
+      {/* Floating Upload Photo FAB at Bottom Right of Photography Gallery */}
+      {isAdminAuthenticated && (
+        <motion.button
+          initial={{ opacity: 0, scale: 0.8, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          whileHover={{ scale: 1.08 }}
+          whileTap={{ scale: 0.92 }}
+          onClick={() => setShowAddPhotoModal(true)}
+          className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 z-[120] px-4 py-3 sm:px-5 sm:py-3.5 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-syne font-extrabold text-xs sm:text-sm tracking-wider uppercase flex items-center gap-2.5 shadow-[0_10px_35px_rgba(37,99,235,0.65),0_0_20px_rgba(168,85,247,0.4)] border border-blue-400/50 backdrop-blur-xl cursor-pointer group"
+          title="Upload New Master Photo from Gallery"
+        >
+          <div className="w-6 h-6 rounded-full bg-white/20 border border-white/30 flex items-center justify-center group-hover:rotate-90 transition-transform duration-300">
+            <Plus className="w-4 h-4 stroke-[3] text-white" />
+          </div>
+          <span>Upload Photo</span>
+        </motion.button>
+      )}
     </motion.div>
   );
 }

@@ -1,6 +1,31 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Portfolio showcase catalogs, profile, projects, media, and credentials
+    match /portfolios/{catalogId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Public contact message submissions from visitors
+    match /contact_messages/{messageId} {
+      allow create: if request.resource.data.name is string
+                    && request.resource.data.name.size() > 0
+                    && request.resource.data.name.size() <= 200
+                    && request.resource.data.email is string
+                    && request.resource.data.email.size() <= 200
+                    && request.resource.data.message is string
+                    && request.resource.data.message.size() <= 5000;
+      allow read: if true;
+      allow update, delete: if true;
+    }
+
+    // Connection testing doc
+    match /test/{docId} {
+      allow read, write: if true;
+    }
+
+    // Catch-all fallback
     match /{document=**} {
       allow read, write: if true;
     }

@@ -13,8 +13,10 @@ import {
 } from 'lucide-react';
 import { siteConfig } from '../config/site';
 import { Logo } from './Logo';
+import { useFirebaseData } from '../context/FirebaseDataContext';
 
 export function Navigation() {
+  const { siteProfile } = useFirebaseData();
   const [activeSection, setActiveSection] = useState('home');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showNav, setShowNav] = useState(false);
@@ -78,7 +80,7 @@ export function Navigation() {
               <div className="relative flex items-center justify-center">
                 <Logo className="w-8 h-8 sm:w-9 sm:h-9 transition-transform duration-500 group-hover:scale-110" />
               </div>
-              <span className="font-sans font-extrabold tracking-widest text-sm sm:text-base text-white group-hover:text-blue-400 transition-colors uppercase">{siteConfig.initials}</span>
+              <span className="font-sans font-extrabold tracking-widest text-sm sm:text-base text-white group-hover:text-blue-400 transition-colors uppercase">{siteProfile.initials || siteConfig.initials}</span>
             </a>
 
             {/* Desktop Direct Links Navigation */}
@@ -114,7 +116,7 @@ export function Navigation() {
             <div className="flex items-center gap-1.5 sm:gap-2 pl-0.5 ml-auto md:ml-0">
               {/* Instagram */}
               <a
-                href={siteConfig.socials.instagram}
+                href={siteProfile.socials?.instagram || siteConfig.socials.instagram}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group relative p-2 sm:p-2.5 rounded-full bg-white/5 hover:bg-gradient-to-tr hover:from-[#833ab4] hover:via-[#fd1d1d] hover:to-[#fcb045] border border-white/10 hover:border-transparent text-neutral-300 hover:text-white transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-110 active:scale-95 shadow-md hover:shadow-[0_0_20px_rgba(225,48,108,0.6)] cursor-pointer"
@@ -126,7 +128,7 @@ export function Navigation() {
 
               {/* WhatsApp */}
               <a
-                href={siteConfig.socials.whatsapp}
+                href={siteProfile.socials?.whatsapp || siteConfig.socials.whatsapp}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group relative p-2 sm:p-2.5 rounded-full bg-white/5 hover:bg-emerald-500 border border-white/10 hover:border-transparent text-neutral-300 hover:text-white transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-110 active:scale-95 shadow-md hover:shadow-[0_0_20px_rgba(16,185,129,0.6)] cursor-pointer"

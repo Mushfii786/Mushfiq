@@ -74,11 +74,29 @@ const coverFlowData: CoverFlowItem[] = [
   }
 ];
 
+import { useFirebaseData } from '../context/FirebaseDataContext';
+
 export function Projects() {
+  const { photos, projects: liveProjects } = useFirebaseData();
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [activePhoto, setActivePhoto] = useState<Photo | null>(null);
   const [activeVideo, setActiveVideo] = useState<VideoItem | null>(null);
   const [showFullGallery, setShowFullGallery] = useState(false);
+
+  const dynamicCoverFlowData: CoverFlowItem[] = React.useMemo(() => {
+    if (photos && photos.length > 0) {
+      return photos.slice(0, 10).map((p, idx) => ({
+        id: p.id || `photo-${idx}`,
+        title: p.title,
+        subtitle: p.location || p.caption || 'Frames by Mushfii',
+        category: p.category || 'Photo',
+        url: p.url,
+        type: 'photo' as const,
+        data: p
+      }));
+    }
+    return coverFlowData;
+  }, [photos]);
 
   const handleSelectItem = (item: CoverFlowItem) => {
     if (item.type === 'project' && item.data) {
@@ -126,7 +144,7 @@ export function Projects() {
 
       {/* Interactive 3D Cover Flow Gallery */}
       <CoverFlowGallery
-        items={coverFlowData}
+        items={dynamicCoverFlowData}
         onSelectItem={handleSelectItem}
         autoPlayInterval={5000}
       />

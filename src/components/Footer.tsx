@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowUp, Instagram, Github, Linkedin, Mail, MessageCircle, Sparkles } from 'lucide-react';
 import { siteConfig } from '../config/site';
+import { useFirebaseData } from '../context/FirebaseDataContext';
 
 export function Footer() {
+  const { siteProfile } = useFirebaseData();
   const [time, setTime] = useState<string>('');
 
   useEffect(() => {
@@ -20,14 +22,14 @@ export function Footer() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const nameLetters = "MUSHFII".split("");
+  const nameLetters = (siteProfile.initials || "MUSHFII").toUpperCase().split("");
 
   const socialLinks = [
-    { name: "Instagram", url: siteConfig.socials.instagram, icon: Instagram },
-    { name: "GitHub", url: siteConfig.socials.github, icon: Github },
-    { name: "LinkedIn", url: siteConfig.socials.linkedin, icon: Linkedin },
-    { name: "WhatsApp", url: siteConfig.socials.whatsapp, icon: MessageCircle },
-    { name: "Email", url: siteConfig.socials.email, icon: Mail },
+    { name: "Instagram", url: siteProfile.socials?.instagram || siteConfig.socials.instagram, icon: Instagram },
+    { name: "GitHub", url: siteProfile.socials?.github || siteConfig.socials.github, icon: Github },
+    { name: "LinkedIn", url: siteProfile.socials?.linkedin || siteConfig.socials.linkedin, icon: Linkedin },
+    { name: "WhatsApp", url: siteProfile.socials?.whatsapp || siteConfig.socials.whatsapp, icon: MessageCircle },
+    { name: "Email", url: siteProfile.socials?.email || siteConfig.socials.email, icon: Mail },
   ];
 
   return (

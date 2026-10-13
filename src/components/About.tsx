@@ -27,40 +27,58 @@ function WhatsappIcon({ className }: { className?: string }) {
   );
 }
 
+import { useFirebaseData } from '../context/FirebaseDataContext';
+
 export function About() {
+  const { siteProfile, timeline } = useFirebaseData();
+
   const socialList = [
-    { name: 'Instagram', url: siteConfig.socials.instagram, icon: Instagram },
-    { name: 'WhatsApp', url: siteConfig.socials.whatsapp, icon: WhatsappIcon },
-    { name: 'LinkedIn', url: siteConfig.socials.linkedin, icon: Linkedin },
-    { name: 'GitHub', url: siteConfig.socials.github, icon: Github },
-    { name: 'Pinterest', url: siteConfig.socials.pinterest, icon: PinterestIcon },
-  ];
-  const experiences = [
-    {
-      period: "2024 – Present",
-      title: "Videographer & Visual Designer",
-      company: "Freelance"
-    },
-    {
-      period: "2024 – Present",
-      title: "Digital Poster Designer",
-      company: "College Media & Student Organizations"
-    },
-    {
-      period: "2024 – Present",
-      title: "Creative Video Editor",
-      company: "Freelance"
-    }
+    { name: 'Instagram', url: siteProfile.socials?.instagram || siteConfig.socials.instagram, icon: Instagram },
+    { name: 'WhatsApp', url: siteProfile.socials?.whatsapp || siteConfig.socials.whatsapp, icon: WhatsappIcon },
+    { name: 'LinkedIn', url: siteProfile.socials?.linkedin || siteConfig.socials.linkedin, icon: Linkedin },
+    { name: 'GitHub', url: siteProfile.socials?.github || siteConfig.socials.github, icon: Github },
+    { name: 'Pinterest', url: siteProfile.socials?.pinterest || siteConfig.socials.pinterest, icon: PinterestIcon },
   ];
 
-  const education = [
-    {
-      period: "2019 – Present",
-      title: "Hudawi Course (Islamic Studies)",
-      company: "Al Hidaya Islamic Academy, Kalamassery, Ernakulam",
-      university: "Affiliated with Darul Huda Islamic University, Chemmad"
-    }
-  ];
+  const experiences = (timeline && timeline.filter(t => t.type === 'experience').length > 0)
+    ? timeline.filter(t => t.type === 'experience').map(t => ({
+        period: t.period,
+        title: t.roleOrDegree,
+        company: t.organization
+      }))
+    : [
+        {
+          period: "2024 – Present",
+          title: "Videographer & Visual Designer",
+          company: "Freelance"
+        },
+        {
+          period: "2024 – Present",
+          title: "Digital Poster Designer",
+          company: "College Media & Student Organizations"
+        },
+        {
+          period: "2024 – Present",
+          title: "Creative Video Editor",
+          company: "Freelance"
+        }
+      ];
+
+  const education = (timeline && timeline.filter(t => t.type === 'education').length > 0)
+    ? timeline.filter(t => t.type === 'education').map(t => ({
+        period: t.period,
+        title: t.roleOrDegree,
+        company: t.organization,
+        university: t.location
+      }))
+    : [
+        {
+          period: "2019 – Present",
+          title: "Hudawi Course (Islamic Studies)",
+          company: "Al Hidaya Islamic Academy, Kalamassery, Ernakulam",
+          university: "Affiliated with Darul Huda Islamic University, Chemmad"
+        }
+      ];
 
   return (
     <section id="about" className="py-24 px-4 sm:px-6 max-w-6xl mx-auto relative select-none">
@@ -99,8 +117,8 @@ export function About() {
             {/* Image Container with Smooth Motion */}
             <motion.div className="w-full h-full relative overflow-hidden rounded-[2rem]">
               <img
-                src={siteConfig.avatarUrl}
-                alt={siteConfig.name}
+                src={siteProfile.avatarUrl || siteConfig.avatarUrl}
+                alt={siteProfile.name || siteConfig.name}
                 className="w-full h-full object-cover object-top filter saturate-[1.1] brightness-[1.02] group-hover/img:scale-108 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] transform-gpu"
               />
               {/* Cinematic Vignette Overlay */}
@@ -128,22 +146,22 @@ export function About() {
 
             <div className="space-y-2 pt-1">
               <h3 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight">
-                {siteConfig.name}
+                {siteProfile.name || siteConfig.name}
               </h3>
               <p className="text-xs sm:text-sm font-mono uppercase tracking-widest bg-gradient-to-r from-[#8B5CF6] via-[#3B82F6] to-[#06B6D4] bg-clip-text text-transparent font-bold">
-                {siteConfig.title}
+                {siteProfile.title || siteConfig.title}
               </p>
             </div>
 
             <div className="text-neutral-300 text-sm sm:text-base font-light leading-relaxed pt-2">
-              <p>{siteConfig.aboutIntro}</p>
+              <p>{siteProfile.aboutIntro || siteConfig.aboutIntro}</p>
             </div>
           </div>
 
           <div className="pt-6 flex items-center justify-between text-xs text-neutral-400 font-mono relative z-10 border-t border-white/5 mt-4">
             <span className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-              {siteConfig.location}
+              {siteProfile.location || siteConfig.location}
             </span>
             <span className="flex items-center gap-2 text-emerald-400 font-medium px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
