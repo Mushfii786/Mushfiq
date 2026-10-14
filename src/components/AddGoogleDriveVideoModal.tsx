@@ -22,7 +22,7 @@ import {
   Sliders
 } from 'lucide-react';
 import { VideoGalleryItem } from './VideoGalleryPage';
-import { extractGoogleDriveId } from '../utils/googleDrive';
+import { extractGoogleDriveId, extractPinterestEmbedUrl } from '../utils/googleDrive';
 import { saveVideoBlob, captureVideoFrame } from '../utils/videoStorage';
 import { ThumbnailEditStudioModal } from './ThumbnailEditStudioModal';
 import { VideoThumbnailEditor } from './VideoThumbnailEditor';
@@ -419,10 +419,11 @@ export function AddGoogleDriveVideoModal({
   };
 
   const detectedDriveId = extractGoogleDriveId(driveUrl);
+  const detectedPinterestEmbed = extractPinterestEmbedUrl(driveUrl);
   const isGalleryMode = sourceMode === 'gallery';
   const isValid = isGalleryMode
     ? Boolean(galleryVideoFile && title.trim())
-    : Boolean(detectedDriveId && title.trim());
+    : Boolean((detectedDriveId || detectedPinterestEmbed) && title.trim());
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -433,10 +434,16 @@ export function AddGoogleDriveVideoModal({
       const finalPoster = thumbnailDataUrl.trim() || autoThumbnail.trim() || DEFAULT_POSTERS[existingCount % DEFAULT_POSTERS.length];
       const finalCaption = caption.trim() || (isGalleryMode
         ? `Cinematic visual reel uploaded from gallery.`
+        : detectedPinterestEmbed
+        ? `Cinematic visual reel streamed via Pinterest.`
         : `Cinematic visual reel streamed directly from Google Drive.`
       );
 
-      const videoId = isGalleryMode ? `vgal-gallery-${Date.now()}` : `vgal-drive-${Date.now()}`;
+      const videoId = isGalleryMode
+        ? `vgal-gallery-${Date.now()}`
+        : detectedPinterestEmbed
+        ? `vgal-pin-${Date.now()}`
+        : `vgal-drive-${Date.now()}`;
 
       // Persist gallery video file into IndexedDB for persistent local playback across sessions
       if (isGalleryMode && galleryVideoFile) {
@@ -448,15 +455,23 @@ export function AddGoogleDriveVideoModal({
         title: title.trim(),
         category: category,
         url: finalPoster,
-        videoUrl: isGalleryMode ? galleryVideoUrl : `https://drive.google.com/file/d/${detectedDriveId}/preview`,
+        videoUrl: isGalleryMode
+          ? galleryVideoUrl
+          : detectedPinterestEmbed
+          ? detectedPinterestEmbed
+          : `https://drive.google.com/file/d/${detectedDriveId}/preview`,
         caption: finalCaption,
-        location: "Cinematic Film",
+        location: detectedPinterestEmbed ? "Pinterest Reel" : "Cinematic Film",
         camera: "Cinema Rig",
         lens: "35mm Prime",
         settings: "4K UHD • High Bitrate",
         year: new Date().getFullYear().toString(),
         column: ((existingCount % 4) + 1) as 1 | 2 | 3 | 4,
-        aspectRatioClass: isGalleryMode ? (galleryAspectRatio || "aspect-[16/9]") : "aspect-[16/9]",
+        aspectRatioClass: isGalleryMode
+          ? (galleryAspectRatio || "aspect-[16/9]")
+          : detectedPinterestEmbed
+          ? "aspect-[9/16]"
+          : "aspect-[16/9]",
         duration: isGalleryMode && galleryVideoDuration ? galleryVideoDuration : "",
         views: 1,
         likes: 0,
@@ -748,12 +763,12 @@ export function AddGoogleDriveVideoModal({
                     type="text"
                     value={driveUrl}
                     onChange={(e) => setDriveUrl(e.target.value)}
-                    placeholder="https://drive.google.com/file/d/1A2B3C4D5E.../view?usp=sharing"
+                    placeholder="Paste Google Drive link or Pinterest embed URL (e.g. assets.pinterest.com/ext/embed.html?id=...)"
                     className="w-full px-4 py-3.5 rounded-2xl bg-black/40 border border-white/[0.12] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-sm text-white placeholder-neutral-500 font-sans transition-all outline-none shadow-inner"
                     required
                   />
 
-                  {detectedDriveId ? (
+                  {detectedDriveId || detectedPinterestEmbed ? (
                     <div className="space-y-2">
                       {isEditingCover ? (
                         <VideoThumbnailEditor
@@ -771,7 +786,11 @@ export function AddGoogleDriveVideoModal({
                           <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 flex items-center justify-between text-xs font-sans text-emerald-300">
                             <span className="flex items-center gap-2">
                               <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                              <span>Drive ID Connected: <strong className="text-white font-semibold">{detectedDriveId.slice(0, 14)}...</strong></span>
+                              <span>
+                                {detectedPinterestEmbed
+                                  ? 'Pinterest Video Connected'
+                                  : `Drive ID Connected: ${detectedDriveId?.slice(0, 14)}...`}
+                              </span>
                             </span>
                             <div className="flex items-center gap-3">
                               <button
@@ -797,7 +816,7 @@ export function AddGoogleDriveVideoModal({
                             <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-black border border-white/10 shadow-inner">
                               <img
                                 src={thumbnailDataUrl}
-                                alt="Selected Drive thumbnail"
+                                alt="Selected thumbnail"
                                 className="w-full h-full object-cover"
                               />
                               <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-black/80 backdrop-blur-md border border-white/20 text-white font-mono text-[10px] flex items-center gap-1.5 shadow-md z-10">
@@ -807,15 +826,26 @@ export function AddGoogleDriveVideoModal({
                             </div>
                           )}
 
-                          {testPreviewOpen && detectedDriveId && (
-                            <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-black border border-white/10 shadow-inner">
-                              <iframe
-                                src={`https://drive.google.com/file/d/${detectedDriveId}/preview`}
-                                className="w-full h-full border-0"
-                                allow="autoplay; fullscreen"
-                                allowFullScreen
-                                title="Live Google Drive Preview"
-                              />
+                          {testPreviewOpen && (
+                            <div className={`relative ${detectedPinterestEmbed ? 'aspect-[9/16] max-h-[380px] max-w-[240px] mx-auto' : 'aspect-video'} w-full rounded-2xl overflow-hidden bg-black border border-white/10 shadow-inner`}>
+                              {detectedPinterestEmbed ? (
+                                <iframe
+                                  src={detectedPinterestEmbed}
+                                  className="w-full h-full border-0"
+                                  allow="autoplay; fullscreen"
+                                  allowFullScreen
+                                  scrolling="no"
+                                  title="Live Pinterest Preview"
+                                />
+                              ) : detectedDriveId ? (
+                                <iframe
+                                  src={`https://drive.google.com/file/d/${detectedDriveId}/preview`}
+                                  className="w-full h-full border-0"
+                                  allow="autoplay; fullscreen"
+                                  allowFullScreen
+                                  title="Live Google Drive Preview"
+                                />
+                              ) : null}
                             </div>
                           )}
                         </>

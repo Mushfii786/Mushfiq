@@ -2,11 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, ArrowRight, X, Maximize2, Heart, Share2, Camera, MapPin, Sparkles, Video, Play, Eye, Film, Plus, ExternalLink, Trash2, Lock, Unlock, Shield, Search, ChevronLeft, ChevronRight, Download, Check, CheckCircle2, Save, Edit3, Tag, RotateCcw, ArrowUp, ArrowDown, AlertTriangle, GripVertical, Upload, Move, MoreVertical } from 'lucide-react';
 import { GradientWaves } from './GradientWaves';
-import { extractGoogleDriveId, isGoogleDriveUrl } from '../utils/googleDrive';
+import { extractGoogleDriveId, isGoogleDriveUrl, extractPinterestEmbedUrl, isPinterestUrl, getPinterestPinUrl } from '../utils/googleDrive';
 import { getVideoBlob, deleteVideoBlob, clearAllVideoBlobs } from '../utils/videoStorage';
 import { AddGoogleDriveVideoModal } from './AddGoogleDriveVideoModal';
 import { AdminAuthModal } from './AdminAuthModal';
 import { ThumbnailEditStudioModal } from './ThumbnailEditStudioModal';
+
+function PinterestIcon({ className = 'w-3 h-3' }: { className?: string }) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+      <path d="M12 0C5.373 0 0 5.372 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738a.36.36 0 01.083.345c-.091.379-.293 1.194-.333 1.362-.053.225-.173.271-.4.163-1.493-.695-2.427-2.877-2.427-4.631 0-3.774 2.742-7.237 7.901-7.237 4.15 0 7.375 2.957 7.375 6.91 0 4.123-2.599 7.441-6.206 7.441-1.212 0-2.352-.63-2.742-1.374l-.747 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12 24c6.627 0 12-5.373 12-12 0-6.628-5.373-12-12-12z" />
+    </svg>
+  );
+}
 
 interface VideoGalleryPageProps {
   onClose: () => void;
@@ -132,21 +140,21 @@ export const videoGalleryItems: VideoGalleryItem[] = [
   },
   {
     id: "vgal-2-2",
-    title: "Studio Chiaroscuro & Silhouette",
-    category: "Commercial",
-    url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=800",
-    videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-waves-in-the-water-1164-large.mp4",
-    caption: "Minimalist studio lighting performance examining form, shadow, and controlled highlight roll-off.",
-    location: "Creative Space Studio",
-    camera: "ARRI Alexa Mini LF",
-    lens: "85mm ARRI Signature Prime",
-    settings: "4.5K 24fps • ARRIRAW",
+    title: "VI-SION '26 | ARTS FEST",
+    category: "Cinematic Reels",
+    url: "https://i.pinimg.com/736x/7a/ff/18/7aff185089bc242823fb53b6bfb29071.jpg",
+    videoUrl: "https://assets.pinterest.com/ext/embed.html?id=897131188296515260",
+    caption: "VI-SION '26 Arts Fest cinematic reel and festival highlight visual.",
+    location: "Arts Fest '26",
+    camera: "Sony FX3",
+    lens: "35mm Cine Prime",
+    settings: "4K 60fps • S-Log3",
     year: "2026 Film",
     column: 2,
-    aspectRatioClass: "aspect-[3/4]",
-    duration: "0:40",
-    views: 18900,
-    likes: 2150
+    aspectRatioClass: "aspect-[9/16]",
+    duration: "0:45",
+    views: 19400,
+    likes: 2320
   },
   {
     id: "vgal-2-3",
@@ -463,6 +471,8 @@ function GalleryVideoCard({
   // Playable video stream for hover motion preview
   const hoverVideoSrc = isGoogleDriveUrl(item.videoUrl)
     ? 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-beach-and-the-ocean-41550-large.mp4'
+    : isPinterestUrl(item.videoUrl)
+    ? ''
     : item.videoUrl;
 
   const handleMouseEnter = () => {
@@ -542,6 +552,14 @@ function GalleryVideoCard({
             }`}
           />
         ) : null}
+
+        {/* Pinterest Badge */}
+        {isPinterestUrl(item.videoUrl) && (
+          <div className="absolute top-2.5 left-2.5 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-600/90 text-white font-mono text-[9px] font-bold tracking-wider uppercase backdrop-blur-md shadow-md border border-white/20 pointer-events-none">
+            <PinterestIcon className="w-2.5 h-2.5" />
+            <span>PIN REEL</span>
+          </div>
+        )}
 
         {/* Auto-Playing Video Preview (Mobile & Desktop Compatible) */}
         {Boolean(hoverVideoSrc) && (
@@ -699,10 +717,28 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((v) => ({
-            ...v,
-            duration: v.duration && v.duration.toLowerCase() === 'hd reel' ? '' : (v.duration || '')
-          }));
+          const updatedCatalog = parsed.map((v) => {
+            if (v.id === 'vgal-2-2' && (!v.videoUrl || !v.videoUrl.includes('pinterest'))) {
+              return {
+                ...v,
+                title: "VI-SION '26 | ARTS FEST",
+                url: "https://i.pinimg.com/736x/7a/ff/18/7aff185089bc242823fb53b6bfb29071.jpg",
+                videoUrl: "https://assets.pinterest.com/ext/embed.html?id=897131188296515260",
+                caption: "VI-SION '26 Arts Fest cinematic reel and festival highlight visual.",
+                location: "Arts Fest '26",
+                aspectRatioClass: "aspect-[9/16]",
+                duration: "0:45"
+              };
+            }
+            return {
+              ...v,
+              duration: v.duration && v.duration.toLowerCase() === 'hd reel' ? '' : (v.duration || '')
+            };
+          });
+          try {
+            localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(updatedCatalog));
+          } catch {}
+          return updatedCatalog;
         }
       }
       // Migrate from previous storage key if present
@@ -1624,11 +1660,13 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
       <AnimatePresence>
         {activeVideo && (() => {
           const driveId = extractGoogleDriveId(activeVideo.videoUrl);
+          const pinterestEmbedUrl = extractPinterestEmbedUrl(activeVideo.videoUrl);
 
           // Determine whether video is portrait or landscape:
-          // Portrait: vertical reels (9:16), 3:4 or 4:5
+          // Portrait: vertical reels (9:16), 3:4, 4:5, or Pinterest embeds
           // Landscape: widescreen cinematic (16:9), 4:3, 21:9 ultrawide, or Google Drive / default landscape
           const isPortraitVideo = Boolean(
+            pinterestEmbedUrl ||
             detectedVideoAspect === 'portrait' ||
             (detectedVideoAspect === null && (
               activeVideo.aspectRatioClass?.includes('9/16') ||
@@ -1728,7 +1766,21 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
 
                   {/* Main Video Element */}
                   <div className="relative z-10 w-full h-full flex items-center justify-center p-2 rounded-[20px] overflow-hidden">
-                    {driveId ? (
+                    {pinterestEmbedUrl ? (
+                      <div className="w-full h-full flex items-center justify-center overflow-hidden">
+                        <iframe
+                          src={pinterestEmbedUrl}
+                          height="714"
+                          width="345"
+                          frameBorder="0"
+                          scrolling="no"
+                          allow="autoplay; fullscreen"
+                          allowFullScreen
+                          className="h-full w-full max-w-[360px] max-h-[78vh] rounded-[18px] border-0 shadow-2xl mx-auto"
+                          title={activeVideo.title}
+                        />
+                      </div>
+                    ) : driveId ? (
                       <iframe
                         src={`https://drive.google.com/file/d/${driveId}/preview`}
                         className="w-full h-full rounded-[18px] border-0 bg-black shadow-2xl"
@@ -1792,24 +1844,38 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
                     </>
                   )}
 
-                  {/* Premium Download Pill Button matching exact reference image */}
-                  <button
-                    onClick={(e) => handleDownloadVideo(activeVideo, e)}
-                    title="Download video"
-                    className="absolute bottom-3.5 right-3.5 z-20 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-black/80 hover:bg-white text-neutral-200 hover:text-black border border-white/15 backdrop-blur-md text-xs font-sans font-medium transition-all duration-200 shadow-lg active:scale-95 cursor-pointer group"
-                  >
-                    {downloading ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-emerald-400 stroke-[2.5]" />
-                        <span>Saved</span>
-                      </>
-                    ) : (
-                      <>
-                        <Download className="w-3.5 h-3.5 transition-transform duration-200 group-hover:-translate-y-0.5" />
-                        <span>Download</span>
-                      </>
-                    )}
-                  </button>
+                  {/* Premium Download Pill Button or Pinterest Link */}
+                  {pinterestEmbedUrl ? (
+                    <a
+                      href={getPinterestPinUrl(activeVideo.videoUrl)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="View on Pinterest"
+                      className="absolute bottom-3.5 right-3.5 z-20 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-red-600/90 hover:bg-red-500 text-white border border-white/20 backdrop-blur-md text-xs font-sans font-medium transition-all duration-200 shadow-lg active:scale-95 cursor-pointer group"
+                    >
+                      <PinterestIcon className="w-3.5 h-3.5" />
+                      <span>View on Pinterest</span>
+                      <ExternalLink className="w-3 h-3 ml-0.5 opacity-80" />
+                    </a>
+                  ) : (
+                    <button
+                      onClick={(e) => handleDownloadVideo(activeVideo, e)}
+                      title="Download video"
+                      className="absolute bottom-3.5 right-3.5 z-20 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-black/80 hover:bg-white text-neutral-200 hover:text-black border border-white/15 backdrop-blur-md text-xs font-sans font-medium transition-all duration-200 shadow-lg active:scale-95 cursor-pointer group"
+                    >
+                      {downloading ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-400 stroke-[2.5]" />
+                          <span>Saved</span>
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-3.5 h-3.5 transition-transform duration-200 group-hover:-translate-y-0.5" />
+                          <span>Download</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
 
                 {/* Centered Typography: Title & Subtitle matching reference card */}

@@ -40,3 +40,50 @@ export function getGoogleDriveViewUrl(idOrUrl: string): string {
 export function isGoogleDriveUrl(url: string | undefined | null): boolean {
   return Boolean(extractGoogleDriveId(url));
 }
+
+/**
+ * Pinterest Embed Utilities
+ * Detects Pinterest URLs and extracts embed preview iframe URLs
+ */
+export function isPinterestUrl(url: string | undefined | null): boolean {
+  if (!url) return false;
+  return /assets\.pinterest\.com\/ext\/embed\.html|pinterest\.com|pin\.it/i.test(url);
+}
+
+export function extractPinterestPinId(input: string | undefined | null): string | null {
+  if (!input) return null;
+  const str = input.trim();
+  const iframeMatch = str.match(/src=["']([^"']+)["']/i);
+  const target = iframeMatch ? iframeMatch[1] : str;
+
+  const embedMatch = target.match(/assets\.pinterest\.com\/ext\/embed\.html\?id=(\d+)/i);
+  if (embedMatch && embedMatch[1]) return embedMatch[1];
+
+  const pinMatch = target.match(/pin\/(\d+)/i);
+  if (pinMatch && pinMatch[1]) return pinMatch[1];
+
+  const idParamMatch = target.match(/[?&]id=(\d+)/i);
+  if (idParamMatch && idParamMatch[1] && target.includes('pinterest')) return idParamMatch[1];
+
+  if (/^\d{15,22}$/.test(target)) return target;
+
+  return null;
+}
+
+export function extractPinterestEmbedUrl(input: string | undefined | null): string | null {
+  if (!input) return null;
+  const pinId = extractPinterestPinId(input);
+  if (pinId) {
+    return `https://assets.pinterest.com/ext/embed.html?id=${pinId}`;
+  }
+  return null;
+}
+
+export function getPinterestPinUrl(pinIdOrUrl: string): string {
+  const pinId = extractPinterestPinId(pinIdOrUrl);
+  if (pinId) {
+    return `https://www.pinterest.com/pin/${pinId}/`;
+  }
+  return pinIdOrUrl;
+}
+

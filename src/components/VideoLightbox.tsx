@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ChevronLeft, ChevronRight, Download, Check } from 'lucide-react';
 import { VideoItem } from '../types';
-import { extractGoogleDriveId } from '../utils/googleDrive';
+import { extractGoogleDriveId, extractPinterestEmbedUrl } from '../utils/googleDrive';
 
 interface VideoLightboxProps {
   video: VideoItem | null;
@@ -51,6 +51,7 @@ export function VideoLightbox({ video, videos, onClose, onSelectVideo }: VideoLi
 
   const currentIndex = videos.findIndex((v) => v.id === video.id);
   const googleDriveId = extractGoogleDriveId(video.videoUrl);
+  const pinterestEmbedUrl = extractPinterestEmbedUrl(video.videoUrl);
 
   const togglePlay = () => {
     if (videoRef.current) {
@@ -190,7 +191,19 @@ export function VideoLightbox({ video, videos, onClose, onSelectVideo }: VideoLi
 
             {/* Main Video Viewport - Fitted to Height */}
             <div className="relative z-10 w-full h-full flex items-center justify-center p-2 rounded-[20px] overflow-hidden">
-              {googleDriveId ? (
+              {pinterestEmbedUrl ? (
+                <iframe
+                  src={pinterestEmbedUrl}
+                  height="714"
+                  width="345"
+                  frameBorder="0"
+                  scrolling="no"
+                  allow="autoplay; fullscreen"
+                  allowFullScreen
+                  className="h-full w-full max-w-[360px] rounded-[18px] border-0 bg-black shadow-2xl mx-auto"
+                  title={video.title}
+                />
+              ) : googleDriveId ? (
                 <iframe
                   src={`https://drive.google.com/file/d/${googleDriveId}/preview`}
                   className="h-full w-full max-w-full rounded-[18px] border-0 bg-black shadow-2xl"

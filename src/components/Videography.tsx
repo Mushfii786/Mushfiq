@@ -1,62 +1,97 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { ArrowRight, Video } from 'lucide-react';
-import { videography as fallbackVideography } from '../config/site';
+import { videography } from '../config/site';
 import { VideoItem } from '../types';
 import { VideoLightbox } from './VideoLightbox';
 import { VideoGalleryPage } from './VideoGalleryPage';
 import { CoverFlowGallery, CoverFlowItem } from './CoverFlowGallery';
-import { useSiteContent } from '../context/SiteContentContext';
 
 export function Videography() {
-  const { videos } = useSiteContent();
   const [activeVideo, setActiveVideo] = useState<VideoItem | null>(null);
   const [showFullGallery, setShowFullGallery] = useState(false);
-
-  // Derive published videos from Firebase / Content layer
-  const publishedVideos: VideoItem[] = useMemo(() => {
-    const list = videos.filter((v) => v.published);
-    if (list.length > 0) {
-      return list.map((v) => ({
-        id: v.id,
-        title: v.title,
-        category: v.category,
-        posterUrl: v.thumbnailUrl || v.videoUrl,
-        videoUrl: v.videoUrl,
-        caption: v.caption,
-        location: v.location || '',
-        duration: v.duration || '0:45',
-        camera: v.camera,
-        lens: v.lens,
-        settings: v.settings,
-        year: v.year || '2026 Film',
-        views: v.views || 1000,
-        likes: v.likes || 120,
-      }));
-    }
-    return fallbackVideography;
-  }, [videos]);
-
-  const videoCoverFlowData: CoverFlowItem[] = useMemo(() => {
-    return publishedVideos.slice(0, 15).map((v) => ({
+  const [videoCoverFlowData, setVideoCoverFlowData] = useState<CoverFlowItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('mushfiq_custom_videos_catalog_v2');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.slice(0, 15).map((v: any) => {
+            const item = v.id === 'vgal-2-2' && (!v.videoUrl || !v.videoUrl.includes('pinterest'))
+              ? {
+                  ...v,
+                  title: "VI-SION '26 | ARTS FEST",
+                  url: "https://i.pinimg.com/736x/7a/ff/18/7aff185089bc242823fb53b6bfb29071.jpg",
+                  videoUrl: "https://assets.pinterest.com/ext/embed.html?id=897131188296515260",
+                  caption: "VI-SION '26 Arts Fest cinematic reel and festival highlight visual."
+                }
+              : v;
+            return {
+              id: item.id,
+              title: item.title,
+              subtitle: item.caption ? item.caption : `${item.location || item.category || ''} ${item.year ? '• ' + item.year : ''}`.trim(),
+              category: item.category,
+              url: item.url || item.posterUrl,
+              type: 'video',
+              data: item,
+            };
+          });
+        }
+      }
+    } catch (e) {}
+    return videography.map((v) => ({
       id: v.id,
       title: v.title,
-      subtitle: v.caption ? v.caption : `${v.location || v.category || ''} ${v.year ? '• ' + v.year : ''}`.trim(),
+      subtitle: `${v.location} • ${v.year}`,
       category: v.category,
       url: v.posterUrl,
       type: 'video',
       data: v,
     }));
-  }, [publishedVideos]);
+  });
 
   useEffect(() => {
     const handleOpenGallery = () => {
       setShowFullGallery(true);
     };
+    const handleSync = () => {
+      try {
+        const saved = localStorage.getItem('mushfiq_custom_videos_catalog_v2');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setVideoCoverFlowData(
+              parsed.slice(0, 15).map((v: any) => {
+                const item = v.id === 'vgal-2-2' && (!v.videoUrl || !v.videoUrl.includes('pinterest'))
+                  ? {
+                      ...v,
+                      title: "VI-SION '26 | ARTS FEST",
+                      url: "https://i.pinimg.com/736x/7a/ff/18/7aff185089bc242823fb53b6bfb29071.jpg",
+                      videoUrl: "https://assets.pinterest.com/ext/embed.html?id=897131188296515260",
+                      caption: "VI-SION '26 Arts Fest cinematic reel and festival highlight visual."
+                    }
+                  : v;
+                return {
+                  id: item.id,
+                  title: item.title,
+                  subtitle: item.caption ? item.caption : `${item.location || item.category || ''} ${item.year ? '• ' + item.year : ''}`.trim(),
+                  category: item.category,
+                  url: item.url || item.posterUrl,
+                  type: 'video',
+                  data: item,
+                };
+              })
+            );
+          }
+        }
+      } catch (e) {}
+    };
 
     window.addEventListener('open-video-gallery', handleOpenGallery);
+    window.addEventListener('sync-custom-videos', handleSync);
     return () => {
       window.removeEventListener('open-video-gallery', handleOpenGallery);
+      window.removeEventListener('sync-custom-videos', handleSync);
     };
   }, []);
 
@@ -128,7 +163,7 @@ export function Videography() {
       {activeVideo && (
         <VideoLightbox
           video={activeVideo}
-          videos={publishedVideos}
+          videos={videography}
           onClose={() => setActiveVideo(null)}
           onSelectVideo={(v) => setActiveVideo(v)}
         />

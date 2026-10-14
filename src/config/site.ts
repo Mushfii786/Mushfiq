@@ -316,19 +316,19 @@ export const videography: VideoItem[] = [
   },
   {
     id: "video-5",
-    title: "Golden Hour Ocean Sunset & Reflection",
-    category: "Commercial Film",
-    posterUrl: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&q=80&w=1200&h=1600",
-    videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-sunset-over-the-ocean-with-waves-41548-large.mp4",
-    caption: "Atmospheric brand promo highlighting natural sunlight, gentle ocean swells, and peaceful mood.",
-    location: "Kozhikode Beach",
-    duration: "1:05",
-    camera: "Sony FX6",
-    lens: "85mm F1.4 GM",
-    settings: "4K 120fps • S-Cinetone",
-    year: "2025 Film",
-    views: 15400,
-    likes: 1620
+    title: "VI-SION '26 | ARTS FEST",
+    category: "Cinematic Reel",
+    posterUrl: "https://i.pinimg.com/736x/7a/ff/18/7aff185089bc242823fb53b6bfb29071.jpg",
+    videoUrl: "https://assets.pinterest.com/ext/embed.html?id=897131188296515260",
+    caption: "VI-SION '26 Arts Fest cinematic reel and festival highlight visual.",
+    location: "Arts Fest '26",
+    duration: "0:45",
+    camera: "Sony FX3",
+    lens: "35mm Cine Prime",
+    settings: "4K 60fps • S-Log3",
+    year: "2026 Film",
+    views: 19400,
+    likes: 2320
   }
 ];
 
