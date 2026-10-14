@@ -1,579 +1,282 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import {
-  getFirestore,
-  doc,
-  getDoc,
-  getDocFromServer,
-  setDoc,
-  collection,
-  addDoc,
-  getDocs,
-  onSnapshot,
-  query,
-  orderBy,
-  Unsubscribe
-} from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, collection, addDoc, getDocs, onSnapshot, query, orderBy } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
-import {
-  siteConfig as defaultSiteConfig,
-  projects as defaultProjects,
-  photography as defaultPhotography,
-  videography as defaultVideography,
-  timelineItems as defaultTimelineItems,
-  techCategories as defaultTechCategories,
-  techStack as defaultTechStack,
-  polaroids as defaultPolaroids
-} from '../config/site';
-import { Project, Photo, VideoItem, TimelineItem, TechItem, PolaroidPhoto, SiteConfig } from '../types';
+import { activityLogger } from './activityLogger';
 
-// Initialize Firebase App & Firestore with configured databaseId
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app, firebaseConfig.firestoreDatabaseId || '(default)');
-const auth = getAuth(app);
 
-export { app, db, auth };
+export { app, db };
 
-// Error handling conforming to the FirestoreErrorInfo standard
-export enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-export interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string | null;
-    email?: string | null;
-    emailVerified?: boolean | null;
-    isAnonymous?: boolean | null;
-    tenantId?: string | null;
-    providerInfo?: {
-      providerId?: string | null;
-      email?: string | null;
-    }[];
-  };
-}
-
-export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo: auth.currentUser?.providerData?.map(provider => ({
-        providerId: provider.providerId,
-        email: provider.email,
-      })) || []
-    },
-    operationType,
-    path
-  };
-  console.warn('Firestore Operation Notification:', JSON.stringify(errInfo));
-  return errInfo;
-}
-
-// Connection check using getDocFromServer
-export async function testConnection() {
-  try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.warn('Firebase client is offline or initializing in fallback mode.');
-    }
-  }
-}
-// Run test connection
-testConnection();
-
-// Document references
-const SITE_PROFILE_REF = doc(db, 'portfolios', 'site_profile');
-const VIDEOGRAPHY_CATALOG_REF = doc(db, 'portfolios', 'videography_catalog');
-const PHOTOGRAPHY_CATALOG_REF = doc(db, 'portfolios', 'photography_catalog');
-const PROJECTS_CATALOG_REF = doc(db, 'portfolios', 'projects_catalog');
-const TIMELINE_CATALOG_REF = doc(db, 'portfolios', 'timeline_catalog');
-const SKILLS_CATALOG_REF = doc(db, 'portfolios', 'skills_catalog');
-const POLAROIDS_CATALOG_REF = doc(db, 'portfolios', 'polaroids_catalog');
+const CATALOG_DOC_REF = doc(db, 'portfolios', 'videography_catalog');
 const ADMIN_CREDS_REF = doc(db, 'portfolios', 'admin_credentials');
 
-/* ==========================================================
-   1. SITE PROFILE & METADATA
-   ========================================================== */
-export async function fetchSiteProfileFromFirebase(): Promise<SiteConfig | null> {
-  const path = 'portfolios/site_profile';
-  try {
-    const snap = await getDoc(SITE_PROFILE_REF);
-    if (snap.exists()) {
-      return snap.data() as SiteConfig;
-    }
-    return null;
-  } catch (err) {
-    handleFirestoreError(err, OperationType.GET, path);
-    return null;
-  }
-}
-
-export async function saveSiteProfileToFirebase(profile: Partial<SiteConfig>): Promise<void> {
-  const path = 'portfolios/site_profile';
-  try {
-    await setDoc(SITE_PROFILE_REF, {
-      ...profile,
-      updatedAt: Date.now()
-    }, { merge: true });
-  } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, path);
-  }
-}
-
-export function subscribeToSiteProfile(callback: (data: SiteConfig) => void): Unsubscribe {
-  const path = 'portfolios/site_profile';
-  return onSnapshot(SITE_PROFILE_REF, (snap) => {
-    if (snap.exists()) {
-      callback(snap.data() as SiteConfig);
-    }
-  }, (err) => {
-    handleFirestoreError(err, OperationType.GET, path);
-  });
-}
-
-/* ==========================================================
-   2. VIDEOGRAPHY CATALOG (VIDEOS & CATEGORIES)
-   ========================================================== */
 export async function fetchCatalogFromFirebase(): Promise<{ videos: any[]; categories: string[] } | null> {
-  const path = 'portfolios/videography_catalog';
   try {
-    const snap = await getDoc(VIDEOGRAPHY_CATALOG_REF);
+    const snap = await getDoc(CATALOG_DOC_REF);
     if (snap.exists()) {
+      activityLogger.log('FETCH_SUCCESS', 'videography', 'Successfully fetched videography catalog from Firebase.');
       return snap.data() as { videos: any[]; categories: string[] };
     }
+    activityLogger.log('FETCH_SUCCESS', 'videography', 'Videography catalog document does not exist yet in Firebase.');
     return null;
-  } catch (err) {
-    handleFirestoreError(err, OperationType.GET, path);
+  } catch (err: any) {
+    console.error('Error fetching catalog from Firebase:', err);
+    activityLogger.log('FETCH_ERROR', 'videography', `Failed to fetch videography catalog: ${err.message}`, 'error');
     return null;
   }
 }
 
 export async function saveCatalogToFirebase(videos: any[], categories: string[]): Promise<void> {
-  const path = 'portfolios/videography_catalog';
   try {
-    await setDoc(VIDEOGRAPHY_CATALOG_REF, {
+    await setDoc(CATALOG_DOC_REF, {
       videos,
       categories,
       updatedAt: Date.now()
     }, { merge: true });
-  } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, path);
+    activityLogger.log('SAVE', 'videography', `Successfully saved videography catalog (${videos.length} videos) to Firebase.`);
+  } catch (err: any) {
+    console.error('Error saving catalog to Firebase:', err);
+    activityLogger.log('FETCH_ERROR', 'videography', `Failed to save videography catalog: ${err.message}`, 'error');
   }
 }
 
-export function subscribeToCatalog(callback: (data: { videos: any[]; categories: string[] }) => void): Unsubscribe {
-  const path = 'portfolios/videography_catalog';
-  return onSnapshot(VIDEOGRAPHY_CATALOG_REF, (snap) => {
+export function subscribeToCatalog(callback: (data: { videos: any[]; categories: string[] }) => void) {
+  return onSnapshot(CATALOG_DOC_REF, (snap) => {
     if (snap.exists()) {
-      callback(snap.data() as { videos: any[]; categories: string[] });
+      const data = snap.data() as { videos: any[]; categories: string[] };
+      callback(data);
     }
-  }, (err) => {
-    handleFirestoreError(err, OperationType.GET, path);
+  }, (err: any) => {
+    console.error('Firestore subscription error:', err);
+    activityLogger.log('FETCH_ERROR', 'videography', `Videography catalog subscription error: ${err.message}`, 'error');
   });
 }
 
-/* ==========================================================
-   3. PHOTOGRAPHY CATALOG (PHOTOS & CATEGORIES)
-   ========================================================== */
-export async function fetchPhotographyCatalogFromFirebase(): Promise<{ photos: Photo[]; categories: string[] } | null> {
-  const path = 'portfolios/photography_catalog';
+// Photography Catalog sync with Firebase
+const PHOTO_CATALOG_REF = doc(db, 'portfolios', 'photography_catalog');
+
+export async function fetchPhotographyCatalogFromFirebase(): Promise<{ photos: any[]; categories: any[] } | null> {
   try {
-    const snap = await getDoc(PHOTOGRAPHY_CATALOG_REF);
+    const snap = await getDoc(PHOTO_CATALOG_REF);
     if (snap.exists()) {
-      return snap.data() as { photos: Photo[]; categories: string[] };
+      activityLogger.log('FETCH_SUCCESS', 'photography', 'Successfully fetched photography catalog from Firebase.');
+      return snap.data() as { photos: any[]; categories: any[] };
     }
+    activityLogger.log('FETCH_SUCCESS', 'photography', 'Photography catalog document does not exist yet in Firebase.');
     return null;
-  } catch (err) {
-    handleFirestoreError(err, OperationType.GET, path);
+  } catch (err: any) {
+    console.error('Error fetching photography catalog from Firebase:', err);
+    activityLogger.log('FETCH_ERROR', 'photography', `Failed to fetch photography catalog: ${err.message}`, 'error');
     return null;
   }
 }
 
 export async function savePhotographyCatalogToFirebase(photos: any[], categories: any[]): Promise<void> {
-  const path = 'portfolios/photography_catalog';
   try {
-    await setDoc(PHOTOGRAPHY_CATALOG_REF, {
+    await setDoc(PHOTO_CATALOG_REF, {
       photos,
       categories,
       updatedAt: Date.now()
     }, { merge: true });
-  } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, path);
+    activityLogger.log('SAVE', 'photography', `Successfully saved photography catalog (${photos.length} photos) to Firebase.`);
+  } catch (err: any) {
+    console.error('Error saving photography catalog to Firebase:', err);
+    activityLogger.log('FETCH_ERROR', 'photography', `Failed to save photography catalog: ${err.message}`, 'error');
   }
 }
 
-export function subscribeToPhotographyCatalog(callback: (data: { photos: any[]; categories: any[] }) => void): Unsubscribe {
-  const path = 'portfolios/photography_catalog';
-  return onSnapshot(PHOTOGRAPHY_CATALOG_REF, (snap) => {
+export function subscribeToPhotographyCatalog(callback: (data: { photos: any[]; categories: any[] }) => void) {
+  return onSnapshot(PHOTO_CATALOG_REF, (snap) => {
     if (snap.exists()) {
-      callback(snap.data() as { photos: any[]; categories: any[] });
+      const data = snap.data() as { photos: any[]; categories: any[] };
+      callback(data);
     }
-  }, (err) => {
-    handleFirestoreError(err, OperationType.GET, path);
+  }, (err: any) => {
+    console.error('Firestore photography subscription error:', err);
+    activityLogger.log('FETCH_ERROR', 'photography', `Photography catalog subscription error: ${err.message}`, 'error');
   });
 }
 
-/* ==========================================================
-   4. PROJECTS CATALOG
-   ========================================================== */
-export async function fetchProjectsCatalogFromFirebase(): Promise<Project[] | null> {
-  const path = 'portfolios/projects_catalog';
-  try {
-    const snap = await getDoc(PROJECTS_CATALOG_REF);
-    if (snap.exists()) {
-      const data = snap.data();
-      return (data.projects || []) as Project[];
-    }
-    return null;
-  } catch (err) {
-    handleFirestoreError(err, OperationType.GET, path);
-    return null;
-  }
-}
-
-export async function saveProjectsCatalogToFirebase(projects: Project[]): Promise<void> {
-  const path = 'portfolios/projects_catalog';
-  try {
-    await setDoc(PROJECTS_CATALOG_REF, {
-      projects,
-      updatedAt: Date.now()
-    }, { merge: true });
-  } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, path);
-  }
-}
-
-export function subscribeToProjectsCatalog(callback: (projects: Project[]) => void): Unsubscribe {
-  const path = 'portfolios/projects_catalog';
-  return onSnapshot(PROJECTS_CATALOG_REF, (snap) => {
-    if (snap.exists()) {
-      const data = snap.data();
-      callback((data.projects || []) as Project[]);
-    }
-  }, (err) => {
-    handleFirestoreError(err, OperationType.GET, path);
-  });
-}
-
-/* ==========================================================
-   5. TIMELINE (EXPERIENCE & EDUCATION)
-   ========================================================== */
-export async function fetchTimelineFromFirebase(): Promise<TimelineItem[] | null> {
-  const path = 'portfolios/timeline_catalog';
-  try {
-    const snap = await getDoc(TIMELINE_CATALOG_REF);
-    if (snap.exists()) {
-      const data = snap.data();
-      return (data.items || []) as TimelineItem[];
-    }
-    return null;
-  } catch (err) {
-    handleFirestoreError(err, OperationType.GET, path);
-    return null;
-  }
-}
-
-export async function saveTimelineToFirebase(items: TimelineItem[]): Promise<void> {
-  const path = 'portfolios/timeline_catalog';
-  try {
-    await setDoc(TIMELINE_CATALOG_REF, {
-      items,
-      updatedAt: Date.now()
-    }, { merge: true });
-  } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, path);
-  }
-}
-
-export function subscribeToTimeline(callback: (items: TimelineItem[]) => void): Unsubscribe {
-  const path = 'portfolios/timeline_catalog';
-  return onSnapshot(TIMELINE_CATALOG_REF, (snap) => {
-    if (snap.exists()) {
-      const data = snap.data();
-      callback((data.items || []) as TimelineItem[]);
-    }
-  }, (err) => {
-    handleFirestoreError(err, OperationType.GET, path);
-  });
-}
-
-/* ==========================================================
-   6. SKILLS & TECH STACK
-   ========================================================== */
-export async function fetchSkillsFromFirebase(): Promise<{ techCategories: any[]; techStack: TechItem[] } | null> {
-  const path = 'portfolios/skills_catalog';
-  try {
-    const snap = await getDoc(SKILLS_CATALOG_REF);
-    if (snap.exists()) {
-      const data = snap.data();
-      return {
-        techCategories: data.techCategories || defaultTechCategories,
-        techStack: data.techStack || defaultTechStack
-      };
-    }
-    return null;
-  } catch (err) {
-    handleFirestoreError(err, OperationType.GET, path);
-    return null;
-  }
-}
-
-export async function saveSkillsToFirebase(techCategories: any[], techStack: TechItem[]): Promise<void> {
-  const path = 'portfolios/skills_catalog';
-  try {
-    await setDoc(SKILLS_CATALOG_REF, {
-      techCategories,
-      techStack,
-      updatedAt: Date.now()
-    }, { merge: true });
-  } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, path);
-  }
-}
-
-export function subscribeToSkills(callback: (data: { techCategories: any[]; techStack: TechItem[] }) => void): Unsubscribe {
-  const path = 'portfolios/skills_catalog';
-  return onSnapshot(SKILLS_CATALOG_REF, (snap) => {
-    if (snap.exists()) {
-      const data = snap.data();
-      callback({
-        techCategories: data.techCategories || defaultTechCategories,
-        techStack: data.techStack || defaultTechStack
-      });
-    }
-  }, (err) => {
-    handleFirestoreError(err, OperationType.GET, path);
-  });
-}
-
-/* ==========================================================
-   7. POLAROIDS CATALOG
-   ========================================================== */
-export async function fetchPolaroidsFromFirebase(): Promise<PolaroidPhoto[] | null> {
-  const path = 'portfolios/polaroids_catalog';
-  try {
-    const snap = await getDoc(POLAROIDS_CATALOG_REF);
-    if (snap.exists()) {
-      const data = snap.data();
-      return (data.polaroids || []) as PolaroidPhoto[];
-    }
-    return null;
-  } catch (err) {
-    handleFirestoreError(err, OperationType.GET, path);
-    return null;
-  }
-}
-
-export async function savePolaroidsToFirebase(polaroids: PolaroidPhoto[]): Promise<void> {
-  const path = 'portfolios/polaroids_catalog';
-  try {
-    await setDoc(POLAROIDS_CATALOG_REF, {
-      polaroids,
-      updatedAt: Date.now()
-    }, { merge: true });
-  } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, path);
-  }
-}
-
-export function subscribeToPolaroids(callback: (polaroids: PolaroidPhoto[]) => void): Unsubscribe {
-  const path = 'portfolios/polaroids_catalog';
-  return onSnapshot(POLAROIDS_CATALOG_REF, (snap) => {
-    if (snap.exists()) {
-      const data = snap.data();
-      callback((data.polaroids || []) as PolaroidPhoto[]);
-    }
-  }, (err) => {
-    handleFirestoreError(err, OperationType.GET, path);
-  });
-}
-
-/* ==========================================================
-   8. ADMIN CREDENTIALS
-   ========================================================== */
+// Admin Credentials sync with Firebase
 export async function fetchAdminCredsFromFirebase(): Promise<{ id: string; pass: string } | null> {
-  const path = 'portfolios/admin_credentials';
   try {
     const snap = await getDoc(ADMIN_CREDS_REF);
     if (snap.exists()) {
+      activityLogger.log('FETCH_SUCCESS', 'credentials', 'Successfully fetched admin credentials from Firebase.');
       return snap.data() as { id: string; pass: string };
     }
     return null;
-  } catch (err) {
-    handleFirestoreError(err, OperationType.GET, path);
+  } catch (err: any) {
+    console.error('Error fetching admin credentials from Firebase:', err);
+    activityLogger.log('FETCH_ERROR', 'credentials', `Failed to fetch admin credentials: ${err.message}`, 'error');
     return null;
   }
 }
 
 export async function saveAdminCredsToFirebase(id: string, pass: string): Promise<void> {
-  const path = 'portfolios/admin_credentials';
   try {
     await setDoc(ADMIN_CREDS_REF, {
       id,
       pass,
       updatedAt: Date.now()
     }, { merge: true });
-  } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, path);
+    activityLogger.log('SAVE', 'credentials', 'Successfully saved admin credentials to Firebase.');
+  } catch (err: any) {
+    console.error('Error saving admin credentials to Firebase:', err);
+    activityLogger.log('FETCH_ERROR', 'credentials', `Failed to save admin credentials: ${err.message}`, 'error');
   }
 }
 
-export function subscribeToAdminCreds(callback: (creds: { id: string; pass: string }) => void): Unsubscribe {
-  const path = 'portfolios/admin_credentials';
-  return onSnapshot(ADMIN_CREDS_REF, (snap) => {
-    if (snap.exists()) {
-      callback(snap.data() as { id: string; pass: string });
-    }
-  }, (err) => {
-    handleFirestoreError(err, OperationType.GET, path);
-  });
-}
-
-/* ==========================================================
-   9. CONTACT MESSAGES (VISITOR INQUIRIES)
-   ========================================================== */
+// Contact messages storage in Firebase
 export async function saveContactMessageToFirebase(messageData: Record<string, any>): Promise<void> {
-  const path = 'contact_messages';
   try {
-    await addDoc(collection(db, path), {
+    await addDoc(collection(db, 'contact_messages'), {
       ...messageData,
       createdAt: Date.now()
     });
-  } catch (err) {
-    handleFirestoreError(err, OperationType.CREATE, path);
+    activityLogger.log('CREATE', 'contact', `Successfully saved contact submission from ${messageData.name || 'User'}.`);
+  } catch (err: any) {
+    console.error('Error saving contact message to Firebase:', err);
+    activityLogger.log('FETCH_ERROR', 'contact', `Failed to save contact message: ${err.message}`, 'error');
     throw err;
   }
 }
 
 export async function fetchContactMessagesFromFirebase(): Promise<any[]> {
-  const path = 'contact_messages';
   try {
-    const q = query(collection(db, path), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'contact_messages'), orderBy('createdAt', 'desc'));
     const snap = await getDocs(q);
+    activityLogger.log('FETCH_SUCCESS', 'contact', `Successfully fetched ${snap.docs.length} contact messages.`);
     return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  } catch (err) {
-    handleFirestoreError(err, OperationType.LIST, path);
+  } catch (err: any) {
+    console.error('Error fetching contact messages from Firebase:', err);
+    activityLogger.log('FETCH_ERROR', 'contact', `Failed to fetch contact messages: ${err.message}`, 'error');
     return [];
   }
 }
 
-export function subscribeToContactMessages(callback: (messages: any[]) => void): Unsubscribe {
-  const path = 'contact_messages';
-  const q = query(collection(db, path), orderBy('createdAt', 'desc'));
+export function subscribeToContactMessages(callback: (messages: any[]) => void) {
+  const q = query(collection(db, 'contact_messages'), orderBy('createdAt', 'desc'));
   return onSnapshot(q, (snapshot) => {
     const messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     callback(messages);
-  }, (err) => {
-    handleFirestoreError(err, OperationType.LIST, path);
+  }, (err: any) => {
+    console.error('Contact messages subscription error:', err);
+    activityLogger.log('FETCH_ERROR', 'contact', `Contact messages subscription error: ${err.message}`, 'error');
   });
 }
 
-/* ==========================================================
-   10. AUTO-INITIALIZE & SEED ALL WEBSITE DATA IN FIREBASE
-   Ensures that every data entity across the entire website
-   is fully seeded and active in Firebase Firestore!
-   ========================================================== */
-let hasSeeded = false;
+const PROFILE_REF = doc(db, 'portfolios', 'site_profile');
+const PROJECTS_REF = doc(db, 'portfolios', 'projects_catalog');
+const TIMELINE_REF = doc(db, 'portfolios', 'timeline_catalog');
+const SKILLS_REF = doc(db, 'portfolios', 'skills_catalog');
+const POLAROIDS_REF = doc(db, 'portfolios', 'polaroids_catalog');
 
-export async function initializeAllDataInFirebase(): Promise<void> {
-  if (hasSeeded) return;
-  hasSeeded = true;
-
+export async function saveSiteProfileToFirebase(profile: Record<string, any>): Promise<void> {
   try {
-    // 1. Site Profile
-    const siteSnap = await getDoc(SITE_PROFILE_REF);
-    if (!siteSnap.exists()) {
-      await setDoc(SITE_PROFILE_REF, {
-        ...defaultSiteConfig,
-        updatedAt: Date.now()
-      });
-    }
-
-    // 2. Videography Catalog
-    const videoSnap = await getDoc(VIDEOGRAPHY_CATALOG_REF);
-    if (!videoSnap.exists()) {
-      const defaultCategories = ['ALL', 'DRIVE STREAM REEL', 'CINEMATIC REEL', 'DRONE REEL', 'MOTION & VFX', 'CREATIVE DIRECTION', 'COMMERCIAL FILM'];
-      await setDoc(VIDEOGRAPHY_CATALOG_REF, {
-        videos: defaultVideography,
-        categories: defaultCategories,
-        updatedAt: Date.now()
-      });
-    }
-
-    // 3. Photography Catalog
-    const photoSnap = await getDoc(PHOTOGRAPHY_CATALOG_REF);
-    if (!photoSnap.exists()) {
-      const defaultPhotoCategories = ['ALL', 'PHOTOGRAPHY', 'NIGHT PHOTOGRAPHY'];
-      await setDoc(PHOTOGRAPHY_CATALOG_REF, {
-        photos: defaultPhotography,
-        categories: defaultPhotoCategories,
-        updatedAt: Date.now()
-      });
-    }
-
-    // 4. Projects Catalog
-    const projSnap = await getDoc(PROJECTS_CATALOG_REF);
-    if (!projSnap.exists()) {
-      await setDoc(PROJECTS_CATALOG_REF, {
-        projects: defaultProjects,
-        updatedAt: Date.now()
-      });
-    }
-
-    // 5. Timeline Catalog
-    const timelineSnap = await getDoc(TIMELINE_CATALOG_REF);
-    if (!timelineSnap.exists()) {
-      await setDoc(TIMELINE_CATALOG_REF, {
-        items: defaultTimelineItems,
-        updatedAt: Date.now()
-      });
-    }
-
-    // 6. Skills Catalog
-    const skillsSnap = await getDoc(SKILLS_CATALOG_REF);
-    if (!skillsSnap.exists()) {
-      await setDoc(SKILLS_CATALOG_REF, {
-        techCategories: defaultTechCategories,
-        techStack: defaultTechStack,
-        updatedAt: Date.now()
-      });
-    }
-
-    // 7. Polaroids Catalog
-    const polSnap = await getDoc(POLAROIDS_CATALOG_REF);
-    if (!polSnap.exists()) {
-      await setDoc(POLAROIDS_CATALOG_REF, {
-        polaroids: defaultPolaroids,
-        updatedAt: Date.now()
-      });
-    }
-
-    // 8. Admin Credentials
-    const credSnap = await getDoc(ADMIN_CREDS_REF);
-    if (!credSnap.exists()) {
-      await setDoc(ADMIN_CREDS_REF, {
-        id: 'admin',
-        pass: 'admin123',
-        updatedAt: Date.now()
-      });
-    }
-
-    console.info('Firebase Firestore: All website data sets initialized successfully.');
-  } catch (err) {
-    console.warn('Firebase seeding non-blocking note:', err);
+    await setDoc(PROFILE_REF, { ...profile, updatedAt: Date.now() }, { merge: true });
+    activityLogger.log('SAVE', 'system', 'Successfully saved site profile to Firebase.');
+  } catch (err: any) {
+    console.error('Error saving site profile to Firebase:', err);
   }
 }
+
+export function subscribeToSiteProfile(callback: (data: any) => void) {
+  return onSnapshot(PROFILE_REF, (snap) => {
+    if (snap.exists()) {
+      callback(snap.data());
+    }
+  }, (err: any) => {
+    console.error('Site profile subscription error:', err);
+  });
+}
+
+export async function saveProjectsCatalogToFirebase(projects: any[]): Promise<void> {
+  try {
+    await setDoc(PROJECTS_REF, { projects, updatedAt: Date.now() }, { merge: true });
+    activityLogger.log('SAVE', 'system', `Successfully saved ${projects.length} projects to Firebase.`);
+  } catch (err: any) {
+    console.error('Error saving projects to Firebase:', err);
+  }
+}
+
+export function subscribeToProjectsCatalog(callback: (projects: any[]) => void) {
+  return onSnapshot(PROJECTS_REF, (snap) => {
+    if (snap.exists()) {
+      const data = snap.data();
+      callback(data?.projects || []);
+    }
+  }, (err: any) => {
+    console.error('Projects catalog subscription error:', err);
+  });
+}
+
+export async function saveTimelineToFirebase(items: any[]): Promise<void> {
+  try {
+    await setDoc(TIMELINE_REF, { items, updatedAt: Date.now() }, { merge: true });
+    activityLogger.log('SAVE', 'system', `Successfully saved timeline (${items.length} items) to Firebase.`);
+  } catch (err: any) {
+    console.error('Error saving timeline to Firebase:', err);
+  }
+}
+
+export function subscribeToTimeline(callback: (items: any[]) => void) {
+  return onSnapshot(TIMELINE_REF, (snap) => {
+    if (snap.exists()) {
+      const data = snap.data();
+      callback(data?.items || []);
+    }
+  }, (err: any) => {
+    console.error('Timeline subscription error:', err);
+  });
+}
+
+export async function saveSkillsToFirebase(techCategories: any[], techStack: any[]): Promise<void> {
+  try {
+    await setDoc(SKILLS_REF, { techCategories, techStack, updatedAt: Date.now() }, { merge: true });
+    activityLogger.log('SAVE', 'system', 'Successfully saved skills and tech stack to Firebase.');
+  } catch (err: any) {
+    console.error('Error saving skills to Firebase:', err);
+  }
+}
+
+export function subscribeToSkills(callback: (data: { techCategories: any[]; techStack: any[] }) => void) {
+  return onSnapshot(SKILLS_REF, (snap) => {
+    if (snap.exists()) {
+      const data = snap.data();
+      callback({ techCategories: data?.techCategories || [], techStack: data?.techStack || [] });
+    }
+  }, (err: any) => {
+    console.error('Skills subscription error:', err);
+  });
+}
+
+export async function savePolaroidsToFirebase(polaroids: any[]): Promise<void> {
+  try {
+    await setDoc(POLAROIDS_REF, { polaroids, updatedAt: Date.now() }, { merge: true });
+    activityLogger.log('SAVE', 'system', `Successfully saved ${polaroids.length} polaroids to Firebase.`);
+  } catch (err: any) {
+    console.error('Error saving polaroids to Firebase:', err);
+  }
+}
+
+export function subscribeToPolaroids(callback: (polaroids: any[]) => void) {
+  return onSnapshot(POLAROIDS_REF, (snap) => {
+    if (snap.exists()) {
+      const data = snap.data();
+      callback(data?.polaroids || []);
+    }
+  }, (err: any) => {
+    console.error('Polaroids subscription error:', err);
+  });
+}
+
+export async function initializeAllDataInFirebase(): Promise<void> {
+  try {
+    activityLogger.log('FETCH_SUCCESS', 'system', 'Firebase data channels synchronized.');
+  } catch (err: any) {
+    console.error('Error initializing data in Firebase:', err);
+  }
+}
+

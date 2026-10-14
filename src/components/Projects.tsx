@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import { projects, photography, videography } from '../config/site';
@@ -8,6 +8,7 @@ import { PhotoLightbox } from './PhotoLightbox';
 import { VideoLightbox } from './VideoLightbox';
 import { GalleryPage } from './GalleryPage';
 import { CoverFlowGallery, CoverFlowItem } from './CoverFlowGallery';
+import { useSiteContent } from '../context/SiteContentContext';
 import RegeneratedImage from '../assets/images/regenerated_image_1786114032574.png'; 
 import RegeneratedImage2 from '../assets/images/regenerated_image_1786192879031.jpg'; 
 import FortKochi from '../assets/images/FortKochi.jpg';
@@ -16,86 +17,68 @@ import RegeneratedImage5 from '../assets/images/regenerated_image_1787807967477.
 import Night from '../assets/images/Night.jpg';
 import Horse from '../assets/images/Horse.jpg';
 
-// Items matching the reference screenshot design
-const coverFlowData: CoverFlowItem[] = [
-  {
-    id: "cf-1",
-    title: "Monsoon Mood",
-    subtitle: "Malappuram, Kerala",
-    category: "Photo",
-    url: RegeneratedImage2,
-    type: "photo",
-    data: photography[0]
-  },
-  {
-    id: "cf-2",
-    title: "Kochi Metro",
-    subtitle: "Kochi, Kerala",
-    category: "Photo",
-    url: RegeneratedImage4,
-    type: "photo",
-    data: photography[1]
-  },
-  {
-    id: "cf-3",
-    title: "Captured Moments",
-    subtitle: "Frames by Mushfii",
-    category: "Photo",
-    url: RegeneratedImage,
-    type: "photo",
-    data: photography[2]
-  },
-  {
-    id: "cf-4",
-    title: "The Ship",
-    subtitle: "Captured in Fort Kochi",
-    category: "Photo",
-    url: FortKochi,
-    type: "photo",
-    data: photography[3] || photography[0]
-  },
-  {
-    id: "cf-5",
-    title: "Wild Horse",
-    subtitle: "Captured in Kodaikanal",
-    category: "Photo",
-    url: Horse,
-    type: "photo",
-    data: photography[4] || photography[0]
-  },
-  {
-    id: "cf-6",
-    title: "Wheel of Lights",
-    subtitle: "Kozhikode, Kerala",
-    category: "Photo",
-    url: Night,
-    type: "photo",
-    data: photography[5] || photography[0]
-  }
-];
-
-import { useFirebaseData } from '../context/FirebaseDataContext';
-
 export function Projects() {
-  const { photos, projects: liveProjects } = useFirebaseData();
+  const { photos } = useSiteContent();
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [activePhoto, setActivePhoto] = useState<Photo | null>(null);
   const [activeVideo, setActiveVideo] = useState<VideoItem | null>(null);
   const [showFullGallery, setShowFullGallery] = useState(false);
 
-  const dynamicCoverFlowData: CoverFlowItem[] = React.useMemo(() => {
-    if (photos && photos.length > 0) {
-      return photos.slice(0, 10).map((p, idx) => ({
-        id: p.id || `photo-${idx}`,
+  // Derive published photos for the cover flow carousel
+  const coverFlowData: CoverFlowItem[] = useMemo(() => {
+    const published = photos.filter((p) => p.published);
+    if (published.length > 0) {
+      return published.slice(0, 15).map((p) => ({
+        id: p.id,
         title: p.title,
-        subtitle: p.location || p.caption || 'Frames by Mushfii',
+        subtitle: p.caption || p.location || 'Photography',
         category: p.category || 'Photo',
         url: p.url,
         type: 'photo' as const,
-        data: p
+        data: {
+          id: p.id,
+          title: p.title,
+          category: p.category,
+          url: p.url,
+          caption: p.caption,
+          location: p.location || '',
+          camera: p.camera,
+          lens: p.lens,
+          settings: p.settings,
+          year: p.year || '2026',
+        },
       }));
     }
-    return coverFlowData;
+    // Fallback if empty
+    return [
+      {
+        id: "cf-1",
+        title: "Monsoon Mood",
+        subtitle: "Malappuram, Kerala",
+        category: "Photo",
+        url: RegeneratedImage2,
+        type: "photo",
+        data: photography[0]
+      },
+      {
+        id: "cf-2",
+        title: "Kochi Metro",
+        subtitle: "Kochi, Kerala",
+        category: "Photo",
+        url: RegeneratedImage4,
+        type: "photo",
+        data: photography[1]
+      },
+      {
+        id: "cf-3",
+        title: "Captured Moments",
+        subtitle: "Frames by Mushfii",
+        category: "Photo",
+        url: RegeneratedImage,
+        type: "photo",
+        data: photography[2]
+      },
+    ];
   }, [photos]);
 
   const handleSelectItem = (item: CoverFlowItem) => {
@@ -144,7 +127,7 @@ export function Projects() {
 
       {/* Interactive 3D Cover Flow Gallery */}
       <CoverFlowGallery
-        items={dynamicCoverFlowData}
+        items={coverFlowData}
         onSelectItem={handleSelectItem}
         autoPlayInterval={5000}
       />

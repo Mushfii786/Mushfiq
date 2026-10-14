@@ -418,12 +418,14 @@ export default function GalleryPage({ onBack, onNavigateSection }: GalleryPagePr
                 }}
               >
                 <div className={`w-18 sm:w-26 md:w-34 lg:w-40 h-26 sm:h-38 md:h-[190px] lg:h-[220px] rounded-2xl sm:rounded-3xl overflow-hidden bg-neutral-900 border-2 ${isCenter ? 'border-[#a3e635] shadow-[0_0_30px_rgba(163,230,53,0.4)] scale-105' : 'border-white/10 shadow-2xl group-hover:border-[#a3e635] group-hover:scale-105'} transition-all duration-300 relative`}>
-                  <img
-                    src={item.src}
-                    alt={item.title}
-                    referrerPolicy="no-referrer"
-                    className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${item.extraClass || ''}`}
-                  />
+                  {item.src ? (
+                    <img
+                      src={item.src}
+                      alt={item.title}
+                      referrerPolicy="no-referrer"
+                      className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${item.extraClass || ''}`}
+                    />
+                  ) : null}
                   {isCenter && (
                     <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[2px] bg-[#a3e635] shadow-[0_0_10px_#a3e635] z-10 pointer-events-none" />
                   )}
@@ -582,12 +584,14 @@ export default function GalleryPage({ onBack, onNavigateSection }: GalleryPagePr
                 onClick={() => setSelectedPhoto(photo)}
                 className={`group relative ${photo.span || ''} ${photo.heightClass || 'h-[190px] sm:h-[220px]'} rounded-[18px] sm:rounded-[22px] overflow-hidden bg-[#111116] border border-white/10 cursor-pointer shadow-xl hover:border-[#FF5A1F]/50 hover:shadow-[#FF5A1F]/20 transition-all duration-300 transform hover:-translate-y-1`}
               >
-                <img
-                  src={photo.src}
-                  alt={photo.title}
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                />
+                {photo.src ? (
+                  <img
+                    src={photo.src}
+                    alt={photo.title}
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                  />
+                ) : null}
 
                 {/* Category Pill Tag in Top-Left */}
                 <div className="absolute top-3 left-3 z-10">
@@ -700,12 +704,14 @@ export default function GalleryPage({ onBack, onNavigateSection }: GalleryPagePr
               </button>
 
               <div className="w-full max-h-[72vh] flex items-center justify-center rounded-2xl overflow-hidden bg-black border border-white/10">
-                <img
-                  src={selectedPhoto.src}
-                  alt={selectedPhoto.title}
-                  referrerPolicy="no-referrer"
-                  className="max-h-[72vh] max-w-full object-contain"
-                />
+                {selectedPhoto.src ? (
+                  <img
+                    src={selectedPhoto.src}
+                    alt={selectedPhoto.title}
+                    referrerPolicy="no-referrer"
+                    className="max-h-[72vh] max-w-full object-contain"
+                  />
+                ) : null}
               </div>
 
               <div className="mt-4 w-full flex flex-col sm:flex-row items-start sm:items-center justify-between text-white gap-3 px-2">

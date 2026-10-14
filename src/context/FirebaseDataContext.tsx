@@ -219,10 +219,33 @@ export function FirebaseDataProvider({ children }: { children: React.ReactNode }
   );
 }
 
-export function useFirebaseData() {
+export function useFirebaseData(): FirebaseDataContextType {
   const context = useContext(FirebaseDataContext);
   if (!context) {
-    throw new Error('useFirebaseData must be used within a FirebaseDataProvider');
+    return {
+      siteProfile: defaultSiteConfig,
+      projects: defaultProjects,
+      photos: defaultPhotography,
+      photoCategories: ['ALL', 'PHOTOGRAPHY', 'NIGHT PHOTOGRAPHY'],
+      videos: defaultVideography,
+      videoCategories: [
+        'ALL', 'DRIVE STREAM REEL', 'CINEMATIC REEL', 'DRONE REEL', 'MOTION & VFX', 'CREATIVE DIRECTION', 'COMMERCIAL FILM'
+      ],
+      timeline: defaultTimelineItems,
+      techCategories: defaultTechCategories,
+      techStack: defaultTechStack,
+      polaroids: defaultPolaroids,
+      contactMessages: [],
+      isLoaded: true,
+      updateSiteProfile: async () => {},
+      updateProjects: async () => {},
+      updateVideos: async () => {},
+      updatePhotos: async () => {},
+      updateTimeline: async () => {},
+      updateSkills: async () => {},
+      updatePolaroids: async () => {},
+      sendContactMessage: async () => {},
+    };
   }
   return context;
 }

@@ -7,7 +7,6 @@ import { getVideoBlob, deleteVideoBlob, clearAllVideoBlobs } from '../utils/vide
 import { AddGoogleDriveVideoModal } from './AddGoogleDriveVideoModal';
 import { AdminAuthModal } from './AdminAuthModal';
 import { ThumbnailEditStudioModal } from './ThumbnailEditStudioModal';
-import { fetchCatalogFromFirebase, saveCatalogToFirebase, subscribeToCatalog } from '../utils/firebase';
 
 interface VideoGalleryPageProps {
   onClose: () => void;
@@ -335,15 +334,6 @@ export const videoGalleryItems: VideoGalleryItem[] = [
   }
 ];
 
-const cleanCategoryText = (str: string) => {
-  if (!str) return '';
-  return str
-    .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
-    .replace(/[^\x00-\x7F]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-};
-
 const DEFAULT_CATEGORIES = ['ALL', 'GALLERY UPLOADS', 'GOOGLE DRIVE', 'CINEMATIC REELS', 'DRONE & FPV', 'COMMERCIAL', 'MOTION & VFX', 'DOCUMENTARY'];
 const CATEGORIES_STORAGE_KEY = 'mushfiq_custom_categories_v2';
 const VIDEOS_CATALOG_STORAGE_KEY = 'mushfiq_custom_videos_catalog_v2';
@@ -525,37 +515,39 @@ function GalleryVideoCard({
       onClick={() => {
         if (!draggedVideoId) setActiveVideo(item);
       }}
-      className={`group relative flex flex-col p-2.5 pb-3 sm:p-3.5 sm:pb-4 rounded-[20px] sm:rounded-[26px] md:rounded-[30px] bg-gradient-to-b from-[#1c2235]/95 via-[#101422]/98 to-[#0a0c14]/99 border transition-all duration-300 animate-fadeIn break-inside-avoid w-full mb-3 sm:mb-5 md:mb-7 shadow-[0_16px_50px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.18)] ${
+      className={`group relative flex flex-col p-2 pb-2.5 sm:p-3 sm:pb-3.5 rounded-[18px] sm:rounded-[24px] md:rounded-[28px] bg-gradient-to-b from-[#181b26]/95 via-[#0e1017]/98 to-[#090a0d]/98 border transition-all duration-300 animate-fadeIn break-inside-avoid w-full mb-3 sm:mb-4 md:mb-6 shadow-[0_12px_40px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.12)] ${
         openMenuVideoId === item.id ? 'z-40' : 'z-10'
       } ${
         isBeingDragged
           ? 'opacity-35 scale-95 border-dashed border-blue-400 bg-blue-950/20 cursor-grabbing shadow-none'
           : isDragTarget
-          ? 'scale-[1.02] border-cyan-400 bg-cyan-950/30 shadow-[0_0_40px_rgba(6,182,212,0.65)] cursor-copy ring-2 ring-cyan-400/40'
-          : 'border-white/12 hover:border-blue-400/70 hover:shadow-[0_30px_70px_rgba(0,0,0,0.98),0_0_40px_rgba(59,130,246,0.35),inset_0_1px_0_rgba(255,255,255,0.3)] hover:-translate-y-1.5 active:scale-[0.98] cursor-pointer'
+          ? 'scale-[1.02] border-cyan-400 bg-cyan-950/30 shadow-[0_0_35px_rgba(6,182,212,0.6)] cursor-copy ring-2 ring-cyan-400/40'
+          : 'border-white/[0.09] hover:border-blue-400/60 hover:shadow-[0_24px_60px_rgba(0,0,0,0.95),0_0_35px_rgba(59,130,246,0.28),inset_0_1px_0_rgba(255,255,255,0.25)] hover:-translate-y-1 active:scale-[0.98] cursor-pointer'
       }`}
     >
       {/* Top Metallic Glass Sheen Highlight */}
-      <div className="absolute top-0 inset-x-6 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent pointer-events-none group-hover:via-blue-300/70 transition-colors duration-500" />
+      <div className="absolute top-0 inset-x-6 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none group-hover:via-blue-300/50 transition-colors duration-500" />
 
       {/* Inner Video Poster Frame with video-aware aspect ratio (landscape or portrait) */}
       <div className={`relative w-full ${boxAspectClass} rounded-[14px] sm:rounded-[20px] md:rounded-[22px] overflow-hidden bg-neutral-950 border border-white/[0.1] group-hover:border-white/[0.22] transition-colors duration-300 shadow-inner`}>
         {/* Poster Image */}
-        <img
-          src={item.url}
-          alt={item.title}
-          loading="lazy"
-          onLoad={handleImageLoad}
-          className={`w-full h-full object-cover transition-transform duration-700 ease-out ${
-            isHovered ? 'scale-105' : 'scale-100'
-          }`}
-        />
+        {item.url ? (
+          <img
+            src={item.url}
+            alt={item.title}
+            loading="lazy"
+            onLoad={handleImageLoad}
+            className={`w-full h-full object-cover transition-transform duration-700 ease-out ${
+              isHovered ? 'scale-105' : 'scale-100'
+            }`}
+          />
+        ) : null}
 
         {/* Auto-Playing Video Preview (Mobile & Desktop Compatible) */}
-        {hoverVideoSrc && (
+        {Boolean(hoverVideoSrc) && (
           <video
             ref={videoRef}
-            src={hoverVideoSrc}
+            src={hoverVideoSrc || undefined}
             autoPlay
             muted
             playsInline
@@ -574,9 +566,9 @@ function GalleryVideoCard({
           />
         )}
 
-        {/* Top Right Admin Controls - Premium Landscape & Portrait Compatible */}
+        {/* Top Right Admin Controls */}
         {isAdminAuthenticated && (
-          <div className="absolute top-2.5 sm:top-3.5 right-2.5 sm:right-3.5 z-40">
+          <div className="absolute top-2 sm:top-2.5 right-2 sm:right-2.5 z-30">
             <div className="relative">
               <button
                 type="button"
@@ -584,23 +576,21 @@ function GalleryVideoCard({
                   e.stopPropagation();
                   setOpenMenuVideoId((prev) => (prev === item.id ? null : item.id));
                 }}
-                title="Cinematic Reel Edit Options"
-                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer backdrop-blur-2xl shadow-[0_8px_30px_rgba(0,0,0,0.85)] active:scale-95 border ${
+                title="Reel Edit Menu (Three Dots)"
+                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer backdrop-blur-xl shadow-lg active:scale-90 border ${
                   openMenuVideoId === item.id
-                    ? 'bg-gradient-to-tr from-blue-600 via-indigo-600 to-blue-500 text-white border-blue-300 ring-4 ring-blue-500/40 shadow-[0_0_25px_rgba(59,130,246,0.8)] scale-105'
-                    : 'bg-black/85 hover:bg-gradient-to-tr hover:from-blue-600 hover:to-indigo-600 text-white border-white/30 hover:border-blue-400 hover:scale-105'
+                    ? 'bg-blue-600 text-white border-blue-400 ring-2 ring-blue-400/50 shadow-[0_0_20px_rgba(59,130,246,0.7)]'
+                    : 'bg-black/80 hover:bg-white text-neutral-300 hover:text-black border-white/20 hover:border-white'
                 }`}
               >
-                <MoreVertical className="w-4 h-4" />
+                <MoreVertical className="w-3.5 h-3.5" />
               </button>
 
-              {/* Dropdown Menu for Edits - Horizontal for landscape videos, vertical for portrait */}
+              {/* Dropdown Menu for Edits - Compact Premium Icon Palette */}
               {openMenuVideoId === item.id && (
                 <div
                   onClick={(e) => e.stopPropagation()}
-                  className={`absolute right-0 top-full mt-2 flex ${
-                    isLandscape ? 'flex-row items-center gap-1.5 p-2' : 'flex-col items-center gap-1.5 p-2'
-                  } rounded-2xl bg-neutral-950/98 border border-white/30 shadow-[0_20px_60px_rgba(0,0,0,0.99),0_0_35px_rgba(37,99,235,0.45)] backdrop-blur-3xl z-50 animate-fadeIn select-none`}
+                  className="absolute right-0 top-full mt-1.5 flex flex-col items-center gap-1.5 p-1.5 rounded-2xl bg-[#090b12]/98 border border-white/20 shadow-[0_16px_40px_rgba(0,0,0,0.98),0_0_25px_rgba(37,99,235,0.35)] backdrop-blur-2xl z-50 animate-fadeIn select-none"
                 >
                   <button
                     type="button"
@@ -608,9 +598,9 @@ function GalleryVideoCard({
                       setOpenMenuVideoId(null);
                       setEditingVideo(item);
                     }}
-                    title="Edit Reel Details"
+                    title="Edit Details"
                     aria-label="Edit Details"
-                    className="w-9 h-9 rounded-xl bg-blue-500/20 hover:bg-blue-600 border border-blue-400/35 hover:border-blue-300 flex items-center justify-center text-blue-400 hover:text-white transition-all duration-200 active:scale-90 cursor-pointer shadow-md group"
+                    className="w-8 h-8 rounded-xl bg-blue-500/15 hover:bg-blue-600 border border-blue-400/25 hover:border-blue-400 flex items-center justify-center text-blue-400 hover:text-white transition-all active:scale-90 cursor-pointer shadow-sm group"
                   >
                     <Edit3 className="w-4 h-4 group-hover:scale-110 transition-transform" />
                   </button>
@@ -621,14 +611,14 @@ function GalleryVideoCard({
                       setOpenMenuVideoId(null);
                       setThumbnailStudioVideo(item);
                     }}
-                    title="Cover Frame Studio"
+                    title="Cover Frame"
                     aria-label="Cover Frame"
-                    className="w-9 h-9 rounded-xl bg-purple-500/20 hover:bg-purple-600 border border-purple-400/35 hover:border-purple-300 flex items-center justify-center text-purple-400 hover:text-white transition-all duration-200 active:scale-90 cursor-pointer shadow-md group"
+                    className="w-8 h-8 rounded-xl bg-purple-500/15 hover:bg-purple-600 border border-purple-400/25 hover:border-purple-400 flex items-center justify-center text-purple-400 hover:text-white transition-all active:scale-90 cursor-pointer shadow-sm group"
                   >
                     <Film className="w-4 h-4 group-hover:scale-110 transition-transform" />
                   </button>
 
-                  <div className={isLandscape ? 'w-px h-6 bg-white/25 mx-0.5' : 'w-6 h-px bg-white/20 my-0.5'} />
+                  <div className="w-5 h-px bg-white/15 my-0.5" />
 
                   <button
                     type="button"
@@ -638,7 +628,7 @@ function GalleryVideoCard({
                     }}
                     title="Delete Reel"
                     aria-label="Delete Reel"
-                    className="w-9 h-9 rounded-xl bg-red-500/20 hover:bg-red-600 border border-red-500/35 hover:border-red-400 flex items-center justify-center text-red-400 hover:text-white transition-all duration-200 active:scale-90 cursor-pointer shadow-md group"
+                    className="w-8 h-8 rounded-xl bg-red-500/15 hover:bg-red-600 border border-red-500/25 hover:border-red-400 flex items-center justify-center text-red-400 hover:text-white transition-all active:scale-90 cursor-pointer shadow-sm group"
                   >
                     <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
                   </button>
@@ -694,9 +684,7 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
       const saved = localStorage.getItem(CATEGORIES_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((c: string) => cleanCategoryText(c) || c).filter(Boolean);
-        }
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch {
       // fallback
@@ -774,137 +762,6 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
     };
   }, [openMenuVideoId]);
 
-  // Helper to automatically persist and synchronize catalog & categories instantly across tabs, windows, viewers, and Firebase Firestore
-  const persistAndSyncCatalog = (videos: VideoGalleryItem[], cats: string[]) => {
-    try {
-      localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(videos));
-      localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(cats));
-      const customOnly = videos.filter((v) => v.isCustom);
-      localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(customOnly));
-
-      setSavedVideosSnapshot(videos);
-      setSavedCategoriesSnapshot(cats);
-
-      // Save to Firebase Firestore database
-      saveCatalogToFirebase(videos, cats);
-
-      window.dispatchEvent(new Event('sync-custom-videos'));
-
-      try {
-        const bc = new BroadcastChannel('portfolio_sync_channel');
-        bc.postMessage({ type: 'VIDEOS_UPDATED', timestamp: Date.now() });
-        bc.close();
-      } catch {}
-    } catch (err) {
-      console.error('Auto-save error:', err);
-    }
-  };
-
-  // Initialize and subscribe to Firebase Firestore for real-time updates
-  useEffect(() => {
-    // Fetch initial from Firebase
-    fetchCatalogFromFirebase().then((data) => {
-      if (data && Array.isArray(data.videos) && data.videos.length > 0) {
-        setCatalogVideos(data.videos);
-        setSavedVideosSnapshot(data.videos);
-        localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(data.videos));
-      }
-      if (data && Array.isArray(data.categories) && data.categories.length > 0) {
-        const cleanedCats = data.categories.map((c: string) => cleanCategoryText(c) || c).filter(Boolean);
-        setCategories(cleanedCats);
-        setSavedCategoriesSnapshot(cleanedCats);
-        localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(cleanedCats));
-      }
-    });
-
-    // Subscribe to real-time Firestore updates
-    const unsubscribe = subscribeToCatalog((data) => {
-      if (data && Array.isArray(data.videos) && data.videos.length > 0) {
-        setCatalogVideos(data.videos);
-        setSavedVideosSnapshot(data.videos);
-        localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(data.videos));
-      }
-      if (data && Array.isArray(data.categories) && data.categories.length > 0) {
-        const cleanedCats = data.categories.map((c: string) => cleanCategoryText(c) || c).filter(Boolean);
-        setCategories(cleanedCats);
-        setSavedCategoriesSnapshot(cleanedCats);
-        localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(cleanedCats));
-      }
-    });
-
-    let bc: BroadcastChannel | null = null;
-    try {
-      bc = new BroadcastChannel('portfolio_sync_channel');
-      bc.onmessage = (event) => {
-        if (event.data?.type === 'VIDEOS_UPDATED') {
-          try {
-            const savedVid = localStorage.getItem(VIDEOS_CATALOG_STORAGE_KEY);
-            if (savedVid) {
-              const parsed = JSON.parse(savedVid);
-              if (Array.isArray(parsed)) {
-                setCatalogVideos(parsed);
-                setSavedVideosSnapshot(parsed);
-              }
-            }
-            const savedCat = localStorage.getItem(CATEGORIES_STORAGE_KEY);
-            if (savedCat) {
-              const parsedCat = JSON.parse(savedCat);
-              if (Array.isArray(parsedCat)) {
-                setCategories(parsedCat);
-                setSavedCategoriesSnapshot(parsedCat);
-              }
-            }
-          } catch {}
-        }
-      };
-    } catch {}
-
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === VIDEOS_CATALOG_STORAGE_KEY || e.key === CATEGORIES_STORAGE_KEY) {
-        try {
-          const savedVid = localStorage.getItem(VIDEOS_CATALOG_STORAGE_KEY);
-          if (savedVid) {
-            const parsed = JSON.parse(savedVid);
-            if (Array.isArray(parsed)) {
-              setCatalogVideos(parsed);
-              setSavedVideosSnapshot(parsed);
-            }
-          }
-          const savedCat = localStorage.getItem(CATEGORIES_STORAGE_KEY);
-          if (savedCat) {
-            const parsedCat = JSON.parse(savedCat);
-            if (Array.isArray(parsedCat)) {
-              setCategories(parsedCat);
-              setSavedCategoriesSnapshot(parsedCat);
-            }
-          }
-        } catch {}
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    const handleSyncEvent = () => {
-      try {
-        const savedVid = localStorage.getItem(VIDEOS_CATALOG_STORAGE_KEY);
-        if (savedVid) {
-          const parsed = JSON.parse(savedVid);
-          if (Array.isArray(parsed)) {
-            setCatalogVideos(parsed);
-            setSavedVideosSnapshot(parsed);
-          }
-        }
-      } catch {}
-    };
-    window.addEventListener('sync-custom-videos', handleSyncEvent);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('sync-custom-videos', handleSyncEvent);
-      if (bc) bc.close();
-      if (unsubscribe) unsubscribe();
-    };
-  }, []);
-
   // Save changes from Edit Video Details Modal
   const handleSaveVideoEdits = () => {
     if (!editingVideo) return;
@@ -918,16 +775,20 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
       caption: editFormCaption.trim(),
       aspectRatioClass: editFormAspectRatio || editingVideo.aspectRatioClass || 'aspect-[16/9]'
     };
-    let newCatalog: VideoGalleryItem[] = [];
     setCatalogVideos((prev) => {
-      newCatalog = prev.map((v) => (v.id === updated.id ? updated : v));
-      return newCatalog;
+      const list = prev.map((v) => (v.id === updated.id ? updated : v));
+      try {
+        localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(list));
+      } catch (e) {
+        console.error(e);
+      }
+      return list;
     });
-    persistAndSyncCatalog(newCatalog, categories);
-
+    // Update active video if currently open
     setActiveVideo((current) => (current && current.id === updated.id ? updated : current));
     setEditingVideo(null);
-    setSaveToastMsg(`"${updated.title}" updated and auto-saved successfully!`);
+    window.dispatchEvent(new Event('sync-custom-videos'));
+    setSaveToastMsg(`"${updated.title}" updated! Remember to click "Save Changes".`);
     setTimeout(() => setSaveToastMsg(''), 3500);
   };
 
@@ -938,15 +799,17 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
       ...thumbnailStudioVideo,
       url: newCoverUrl
     };
-    let newCatalog: VideoGalleryItem[] = [];
     setCatalogVideos((prev) => {
-      newCatalog = prev.map((v) => (v.id === updated.id ? updated : v));
-      return newCatalog;
+      const list = prev.map((v) => (v.id === updated.id ? updated : v));
+      try {
+        localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(list));
+      } catch (e) {
+        console.error(e);
+      }
+      return list;
     });
-    persistAndSyncCatalog(newCatalog, categories);
-
     setThumbnailStudioVideo(null);
-    setSaveToastMsg(`Thumbnail cover updated & auto-saved for "${updated.title}"!`);
+    setSaveToastMsg(`Thumbnail cover updated for "${updated.title}"!`);
     setTimeout(() => setSaveToastMsg(''), 3500);
   };
 
@@ -1001,38 +864,44 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
   const handleAddVideo = (newVideo: VideoGalleryItem) => {
     const cleanDuration = newVideo.duration && newVideo.duration.toLowerCase() === 'hd reel' ? '' : (newVideo.duration || '');
     const videoWithCustom: VideoGalleryItem = { ...newVideo, duration: cleanDuration, isCustom: true };
-    
-    let updatedCatalog: VideoGalleryItem[] = [];
     setCatalogVideos((prev) => {
-      updatedCatalog = [videoWithCustom, ...prev];
-      return updatedCatalog;
+      const updated = [videoWithCustom, ...prev];
+      try {
+        localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(updated));
+      } catch (e) {
+        console.error('Failed to save to localStorage', e);
+      }
+      return updated;
     });
 
-    let updatedCategories = [...categories];
-    if (newVideo.category && !updatedCategories.includes(newVideo.category.toUpperCase())) {
+    // Auto-register new category if not already listed
+    if (newVideo.category && !categories.includes(newVideo.category.toUpperCase())) {
       const cleanCat = newVideo.category.toUpperCase();
-      updatedCategories = [...updatedCategories, cleanCat];
-      setCategories(updatedCategories);
+      setCategories((prev) => {
+        const updated = [...prev, cleanCat];
+        try {
+          localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
     }
-
-    persistAndSyncCatalog(updatedCatalog, updatedCategories);
 
     setActiveVideo(videoWithCustom);
     setShowAddModal(false);
-    setSaveToastMsg(`"${videoWithCustom.title}" added and auto-saved successfully!`);
-    setTimeout(() => setSaveToastMsg(''), 3500);
   };
 
   // Custom Delete: Deletes ANY video from catalog
   const handleDeleteVideo = async (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    let updatedCatalog: VideoGalleryItem[] = [];
     setCatalogVideos((prev) => {
-      updatedCatalog = prev.filter((v) => v.id !== id);
-      return updatedCatalog;
+      const updated = prev.filter((v) => v.id !== id);
+      try {
+        localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(updated));
+      } catch (err) {
+        console.error('Failed to update catalog after delete', err);
+      }
+      return updated;
     });
-
-    persistAndSyncCatalog(updatedCatalog, categories);
 
     try {
       await deleteVideoBlob(id);
@@ -1041,8 +910,6 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
     if (activeVideo?.id === id) {
       setActiveVideo(null);
     }
-    setSaveToastMsg('Video deleted and changes auto-saved!');
-    setTimeout(() => setSaveToastMsg(''), 3500);
   };
 
   // Reorder Videos: Moves a video earlier or later in the catalog order
@@ -1058,11 +925,13 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
       const [moved] = newArr.splice(index, 1);
       newArr.splice(targetIndex, 0, moved);
 
-      persistAndSyncCatalog(newArr, categories);
+      try {
+        localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(newArr));
+      } catch (err) {
+        console.error('Failed to save reordered catalog', err);
+      }
       return newArr;
     });
-    setSaveToastMsg('Video order updated and auto-saved!');
-    setTimeout(() => setSaveToastMsg(''), 3500);
   };
 
   // State for Drag & Drop Reordering in 2D Grid (left, right, up, down)
@@ -1112,13 +981,17 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
       const [moved] = newArr.splice(fromIndex, 1);
       newArr.splice(toIndex, 0, moved);
 
-      persistAndSyncCatalog(newArr, categories);
+      try {
+        localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(newArr));
+      } catch (err) {
+        console.error('Failed to save reordered catalog', err);
+      }
       return newArr;
     });
 
     setDraggedVideoId(null);
     setDragOverVideoId(null);
-    setSaveToastMsg('Video order updated & auto-saved!');
+    setSaveToastMsg('Video order updated! Remember to click "Save Changes" to save permanently.');
     setTimeout(() => {
       setSaveToastMsg('');
     }, 3500);
@@ -1133,13 +1006,15 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
     if (!categories.includes(clean)) {
       const updated = [...categories, clean];
       setCategories(updated);
-      persistAndSyncCatalog(catalogVideos, updated);
+      try {
+        localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(updated));
+      } catch (err) {
+        console.error(err);
+      }
       setSelectedCategory(clean);
     }
     setNewCategoryName('');
     setShowAddCategoryModal(false);
-    setSaveToastMsg(`Category "${clean}" created & auto-saved!`);
-    setTimeout(() => setSaveToastMsg(''), 3500);
   };
 
   // Delete Custom Category
@@ -1148,12 +1023,14 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
     if (catToDelete === 'ALL') return;
     const updated = categories.filter((c) => c !== catToDelete);
     setCategories(updated);
-    persistAndSyncCatalog(catalogVideos, updated);
+    try {
+      localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(updated));
+    } catch (err) {
+      console.error(err);
+    }
     if (selectedCategory === catToDelete) {
       setSelectedCategory('ALL');
     }
-    setSaveToastMsg(`Category deleted & auto-saved!`);
-    setTimeout(() => setSaveToastMsg(''), 3500);
   };
 
   // Saved Snapshots to detect unsaved changes (reset is ONLY available before saving changes)
@@ -1180,11 +1057,26 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
 
   // Save All Changes: Persists current video order, custom titles, categories, and uploads
   const handleSaveAllChanges = () => {
-    persistAndSyncCatalog(catalogVideos, categories);
-    setSaveToastMsg('All video reorderings, renames, categories & custom uploads saved successfully!');
-    setTimeout(() => {
-      setSaveToastMsg('');
-    }, 3500);
+    try {
+      localStorage.setItem(VIDEOS_CATALOG_STORAGE_KEY, JSON.stringify(catalogVideos));
+      localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(categories));
+
+      const customOnly = catalogVideos.filter((v) => v.isCustom);
+      localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(customOnly));
+
+      // Synchronize saved snapshots with current state (so hasUnsavedChanges becomes false)
+      setSavedVideosSnapshot(catalogVideos);
+      setSavedCategoriesSnapshot(categories);
+
+      window.dispatchEvent(new Event('sync-custom-videos'));
+
+      setSaveToastMsg('All video reorderings, renames, categories & custom uploads saved successfully!');
+      setTimeout(() => {
+        setSaveToastMsg('');
+      }, 3500);
+    } catch (err) {
+      console.error('Failed saving all changes', err);
+    }
   };
 
   // Reset Unsaved Changes: Reverts unsaved edits back to last saved state (only executable before save)
@@ -1395,9 +1287,8 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
         {/* Right / Category Filter Pills */}
         <div className="flex items-center gap-1.5 sm:gap-2 p-1.5 rounded-full bg-gradient-to-r from-neutral-950/90 via-neutral-900/95 to-neutral-950/90 border border-white/10 backdrop-blur-2xl overflow-x-auto touch-pan-x pb-1.5 lg:pb-1.5 no-scrollbar shadow-[0_8px_32px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.1)] -mx-1 px-1.5 sm:mx-0 sm:px-2">
           {categories.map((cat) => {
-            const cleanCat = cat.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
-            const isSelected = selectedCategory === cat || selectedCategory === cleanCat;
-            const isRemovable = cat !== 'ALL' && cleanCat !== 'ALL';
+            const isSelected = selectedCategory === cat;
+            const isRemovable = cat !== 'ALL';
 
             const getCategoryIcon = (categoryName: string) => {
               const upper = categoryName.toUpperCase();
@@ -1410,13 +1301,13 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
               return Film;
             };
 
-            const CatIcon = getCategoryIcon(cleanCat);
+            const CatIcon = getCategoryIcon(cat);
 
             return (
               <div key={cat} className="relative flex items-center group/cat shrink-0">
                 <button
                   onClick={() => handleCategoryClick(cat)}
-                  className={`relative px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs font-bold tracking-wider uppercase transition-all duration-300 cursor-pointer whitespace-nowrap flex items-center gap-2 z-10 select-none shrink-0 ${
+                  className={`relative px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-300 cursor-pointer whitespace-nowrap flex items-center gap-2 z-10 select-none shrink-0 ${
                     isSelected
                       ? 'text-white'
                       : 'text-neutral-400 hover:text-white hover:bg-white/[0.06]'
@@ -1430,16 +1321,16 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
                     />
                   )}
                   <CatIcon className={`w-3.5 h-3.5 transition-colors duration-200 ${isSelected ? 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]' : 'text-neutral-400 group-hover/cat:text-neutral-200'}`} />
-                  <span className="font-['Syne'] font-extrabold tracking-wider">{cleanCat}</span>
+                  <span className="font-medium tracking-wide">{cat}</span>
                 </button>
 
                 {/* Custom Removal of Categories in Admin Mode */}
                 {isAdminAuthenticated && isRemovable && (
                   <button
                     onClick={(e) => handleDeleteCategory(cat, e)}
-                    title={`Remove "${cleanCat}" category filter tab`}
+                    title={`Remove "${cat}" category filter tab`}
                     className="w-4 h-4 rounded-full bg-red-950/80 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/40 text-[9px] flex items-center justify-center transition-all cursor-pointer mr-0.5 hover:scale-110 active:scale-90 z-20 shadow-sm"
-                    aria-label={`Remove category ${cleanCat}`}
+                    aria-label={`Remove category ${cat}`}
                   >
                     <X className="w-2.5 h-2.5" />
                   </button>
@@ -1822,16 +1713,18 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
                   }`}
                 >
                   {/* Ambient Blurred Fill from Video Poster */}
-                  <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <img
-                      src={activeVideo.url}
-                      alt=""
-                      aria-hidden="true"
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover blur-2xl scale-125 opacity-35 select-none"
-                    />
-                    <div className="absolute inset-0 bg-neutral-950/40" />
-                  </div>
+                  {activeVideo.url ? (
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                      <img
+                        src={activeVideo.url}
+                        alt=""
+                        aria-hidden="true"
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover blur-2xl scale-125 opacity-35 select-none"
+                      />
+                      <div className="absolute inset-0 bg-neutral-950/40" />
+                    </div>
+                  ) : null}
 
                   {/* Main Video Element */}
                   <div className="relative z-10 w-full h-full flex items-center justify-center p-2 rounded-[20px] overflow-hidden">
@@ -1843,11 +1736,11 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
                         allowFullScreen
                         title={activeVideo.title}
                       />
-                    ) : (
+                    ) : activeVideo.videoUrl ? (
                       <video
                         key={activeVideo.id}
                         src={activeVideo.videoUrl}
-                        poster={activeVideo.url}
+                        poster={activeVideo.url || undefined}
                         controls
                         autoPlay
                         muted
@@ -1869,7 +1762,7 @@ export function VideoGalleryPage({ onClose }: VideoGalleryPageProps) {
                             : 'h-full w-auto max-w-full object-contain'
                         }`}
                       />
-                    )}
+                    ) : null}
                   </div>
 
                   {/* Mobile In-card Left & Right Scroll Arrows */}

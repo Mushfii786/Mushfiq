@@ -176,15 +176,17 @@ export function VideoLightbox({ video, videos, onClose, onSelectVideo }: VideoLi
             } bg-[#181920] border border-white/10 rounded-[24px] overflow-hidden flex items-center justify-center shadow-inner group`}
           >
             {/* Ambient Blurred Background from Video Poster */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <img
-                src={video.posterUrl}
-                alt=""
-                aria-hidden="true"
-                className="w-full h-full object-cover blur-2xl scale-125 opacity-35 select-none"
-              />
-              <div className="absolute inset-0 bg-neutral-950/40" />
-            </div>
+            {video.posterUrl ? (
+              <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <img
+                  src={video.posterUrl}
+                  alt=""
+                  aria-hidden="true"
+                  className="w-full h-full object-cover blur-2xl scale-125 opacity-35 select-none"
+                />
+                <div className="absolute inset-0 bg-neutral-950/40" />
+              </div>
+            ) : null}
 
             {/* Main Video Viewport - Fitted to Height */}
             <div className="relative z-10 w-full h-full flex items-center justify-center p-2 rounded-[20px] overflow-hidden">
@@ -196,11 +198,11 @@ export function VideoLightbox({ video, videos, onClose, onSelectVideo }: VideoLi
                   allowFullScreen
                   title={video.title}
                 />
-              ) : (
+              ) : video.videoUrl ? (
                 <video
                   ref={videoRef}
                   src={video.videoUrl}
-                  poster={video.posterUrl}
+                  poster={video.posterUrl || undefined}
                   autoPlay
                   playsInline
                   loop
@@ -209,7 +211,7 @@ export function VideoLightbox({ video, videos, onClose, onSelectVideo }: VideoLi
                   onClick={togglePlay}
                   className="h-full w-auto max-w-full object-contain rounded-[18px] select-none block shadow-2xl cursor-pointer"
                 />
-              )}
+              ) : null}
             </div>
 
             {/* Premium Download Pill Button matching exact reference image */}

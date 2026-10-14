@@ -709,31 +709,6 @@ export function VideoThumbnailEditor({
         </button>
       </div>
 
-      {/* Premium Emoji & Sticker Badges Quick Bar */}
-      <div className="px-4 py-2.5 bg-neutral-950/90 border-b border-white/[0.08] flex items-center justify-center gap-2 flex-wrap">
-        <span className="text-[10px] uppercase tracking-wider text-amber-400 font-bold mr-1 flex items-center gap-1">
-          <Sparkles className="w-3 h-3 text-amber-400" />
-          <span>Premium Badges:</span>
-        </span>
-        {[
-          '⭐ FEATURED',
-          '🔥 HOT REEL',
-          '🎬 CINEMATIC',
-          '💎 EXCLUSIVE',
-          '🚀 4K ULTRA',
-          '🏆 MASTERPIECE'
-        ].map((badge) => (
-          <button
-            key={badge}
-            type="button"
-            onClick={() => setTextOverlay((prev) => ({ ...prev, text: badge }))}
-            className="px-3 py-1 rounded-full bg-gradient-to-r from-blue-600/20 to-purple-600/20 hover:from-blue-600/40 hover:to-purple-600/40 border border-blue-400/30 hover:border-blue-400 text-[11px] font-bold text-white tracking-wide transition-all active:scale-95 cursor-pointer shadow-[0_0_15px_rgba(59,130,246,0.2)] flex items-center gap-1.5"
-          >
-            <span>{badge}</span>
-          </button>
-        ))}
-      </div>
-
       {/* Main Cover Preview Area (With Direct Horizontal Drag-to-Scrub Support) */}
       <div className="p-4 sm:p-6 flex flex-col items-center justify-center relative bg-gradient-to-b from-[#0B0D12] to-black min-h-[320px]">
         <div
@@ -751,7 +726,7 @@ export function VideoThumbnailEditor({
               alt="Custom Cover"
               className="w-full h-full object-cover select-none pointer-events-none"
             />
-          ) : (
+          ) : internalVideoUrl ? (
             <video
               ref={videoRef}
               src={internalVideoUrl}
@@ -774,6 +749,16 @@ export function VideoThumbnailEditor({
               className="w-full h-full object-cover select-none pointer-events-none"
               style={{ willChange: 'contents, transform' }}
             />
+          ) : initialThumbnail ? (
+            <img
+              src={initialThumbnail}
+              alt="Video Thumbnail"
+              className="w-full h-full object-cover select-none pointer-events-none"
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center text-neutral-400 bg-neutral-900/60">
+              <Film className="w-10 h-10 text-neutral-600 mb-2" />
+            </div>
           )}
 
           {/* Timecode badge */}

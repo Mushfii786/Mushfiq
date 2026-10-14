@@ -6,11 +6,11 @@ import { GradientText } from './hero/GradientText';
 import { HeroDock } from './hero/HeroDock';
 import { CursorGlow } from './hero/CursorGlow';
 import { siteConfig } from '../config/site';
-import { useFirebaseData } from '../context/FirebaseDataContext';
+import { useSiteContent } from '../context/SiteContentContext';
 
 export function Hero() {
-  const { siteProfile } = useFirebaseData();
   const containerRef = useRef<HTMLDivElement>(null);
+  const { siteContent } = useSiteContent();
 
   // Parallax on scroll
   const { scrollYProgress } = useScroll({
@@ -70,26 +70,26 @@ export function Hero() {
       >
         {/* Top Floating Glass Badge */}
         <motion.div variants={lineVariants}>
-          <GlassBadge text="Available for Freelance Projects" />
+          <GlassBadge text={siteContent?.hero?.availabilityBadge || "Available for Freelance Projects"} />
         </motion.div>
 
         {/* Main Headline */}
         <div className="space-y-1 sm:space-y-2">
           <motion.div variants={lineVariants} className="overflow-hidden">
             <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-[3.6rem] xl:text-[4.2rem] font-extrabold tracking-tight text-white leading-[1.08] drop-shadow-[0_10px_30px_rgba(0,0,0,0.9)]">
-              Crafting Unforgettable
+              {siteContent?.hero?.headingPart1 || "Crafting Unforgettable"}
             </h1>
           </motion.div>
 
           <motion.div variants={lineVariants} className="overflow-hidden">
             <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-[3.6rem] xl:text-[4.2rem] font-extrabold tracking-tight text-white leading-[1.08] drop-shadow-[0_10px_30px_rgba(0,0,0,0.9)]">
-              Visuals Through
+              {siteContent?.hero?.headingPart2 || "Visuals Through"}
             </h1>
           </motion.div>
 
           <motion.div variants={lineVariants} className="overflow-hidden py-1">
             <h1 className="text-xl sm:text-3xl md:text-4xl lg:text-[3.1rem] xl:text-[3.6rem] font-extrabold tracking-tight leading-[1.08] drop-shadow-[0_0_35px_rgba(139,92,246,0.4)]">
-              <GradientText>Photography, Videography & Editing</GradientText>
+              <GradientText>{siteContent?.hero?.gradientHeading || "Photography, Videography & Editing"}</GradientText>
             </h1>
           </motion.div>
         </div>
@@ -97,7 +97,9 @@ export function Hero() {
         {/* Subtitle Introduction */}
         <motion.div variants={lineVariants} className="max-w-[680px] mx-auto px-2">
           <p className="text-sm sm:text-base md:text-lg text-white/70 font-light leading-relaxed tracking-wide font-sans">
-            Hi, I'm <strong className="font-semibold text-white">{siteProfile.name || siteConfig.name}</strong>. I transform ideas into cinematic visuals through video editing, photography, videography, photo editing, and creative design.
+            {siteContent?.hero?.intro || (
+              <>Hi, I'm <strong className="font-semibold text-white">Mushfiq</strong>. I transform ideas into cinematic visuals through video editing, photography, videography, photo editing, and creative design.</>
+            )}
           </p>
         </motion.div>
 

@@ -39,12 +39,14 @@ export function ProjectCard({ project, index = 0, onClick }: ProjectCardProps) {
         </div>
 
         {/* Project Thumbnail Image */}
-        <img
-          src={project.image}
-          alt={project.title}
-          loading="lazy"
-          className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
-        />
+        {project.image ? (
+          <img
+            src={project.image}
+            alt={project.title}
+            loading="lazy"
+            className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+          />
+        ) : null}
 
         {/* Category Pill at Bottom-Left of Image */}
         <div className="absolute bottom-3 left-3 z-10 px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-[10px] font-mono text-neutral-300">

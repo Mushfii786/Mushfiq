@@ -1,154 +1,177 @@
 {
   "entities": {
-    "PortfolioCatalog": {
-      "title": "Portfolio Catalog",
-      "description": "Videography or photography showcase catalog items and categories",
-      "type": "object",
-      "properties": {
-        "videos": {
-          "type": "array",
-          "description": "List of video items"
-        },
-        "photos": {
-          "type": "array",
-          "description": "List of photo items"
-        },
-        "categories": {
-          "type": "array",
-          "description": "List of category filter names"
-        },
-        "updatedAt": {
-          "type": "number",
-          "description": "Last updated timestamp"
-        }
-      }
-    },
-    "SiteProfile": {
-      "title": "Site Profile",
-      "description": "Global website profile, biography, contact information, roles, and statistics",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string", "description": "Creative professional full name" },
-        "initials": { "type": "string", "description": "Short branding initials or handle" },
-        "handle": { "type": "string", "description": "Primary social tag" },
-        "title": { "type": "string", "description": "Professional title or role" },
-        "tagline": { "type": "string", "description": "Headline tagline statement" },
-        "aboutIntro": { "type": "string", "description": "About section summary introduction" },
-        "aboutBio": { "type": "string", "description": "Comprehensive biographical narrative" },
-        "email": { "type": "string", "description": "Contact email address" },
-        "whatsapp": { "type": "string", "description": "Direct WhatsApp contact number" },
-        "location": { "type": "string", "description": "Geographical location" },
-        "status": { "type": "string", "description": "Current availability status" },
-        "avatarUrl": { "type": "string", "description": "Profile portrait image URL" },
-        "roles": { "type": "array", "description": "List of specialized creative roles" },
-        "socials": { "type": "object", "description": "Social media links mapping" },
-        "stats": { "type": "array", "description": "Key milestone numbers and metrics" },
-        "updatedAt": { "type": "number", "description": "Last updated timestamp" }
-      },
-      "required": ["name", "title", "email"]
-    },
-    "ProjectsCatalog": {
-      "title": "Projects Catalog",
-      "description": "Collection of featured design, development, and visual case studies",
-      "type": "object",
-      "properties": {
-        "projects": { "type": "array", "description": "List of portfolio projects" },
-        "updatedAt": { "type": "number", "description": "Last updated timestamp" }
-      },
-      "required": ["projects"]
-    },
-    "TimelineCatalog": {
-      "title": "Timeline Catalog",
-      "description": "Work experience, educational achievements, and historical career milestones",
-      "type": "object",
-      "properties": {
-        "items": { "type": "array", "description": "List of career and education timeline milestones" },
-        "updatedAt": { "type": "number", "description": "Last updated timestamp" }
-      },
-      "required": ["items"]
-    },
-    "SkillsCatalog": {
-      "title": "Skills Catalog",
-      "description": "Proficiency benchmarks across design, frontend, and media production technologies",
-      "type": "object",
-      "properties": {
-        "techCategories": { "type": "array", "description": "Skill categories with proficiency percentages" },
-        "techStack": { "type": "array", "description": "Specific tech items with tool icons" },
-        "updatedAt": { "type": "number", "description": "Last updated timestamp" }
-      },
-      "required": ["techCategories"]
-    },
-    "PolaroidsCatalog": {
-      "title": "Polaroids Catalog",
-      "description": "Curated analog-style polaroid snapshots with captions and custom rotations",
-      "type": "object",
-      "properties": {
-        "polaroids": { "type": "array", "description": "List of polaroid photos with image URLs and rotations" },
-        "updatedAt": { "type": "number", "description": "Last updated timestamp" }
-      },
-      "required": ["polaroids"]
-    },
-    "AdminCredentials": {
-      "title": "Admin Credentials",
-      "description": "Authentication credentials for director admin control hub",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string", "description": "Director username identifier" },
-        "pass": { "type": "string", "description": "Secure access passcode" },
-        "updatedAt": { "type": "number", "description": "Last update timestamp" }
-      },
-      "required": ["id", "pass"]
-    },
-    "ContactMessage": {
+    "Message": {
       "title": "Contact Message",
-      "description": "Inquiries, project requests, and messages submitted through the website",
+      "description": "Incoming inquiries and messages sent via portfolio contact form",
       "type": "object",
       "properties": {
-        "name": { "type": "string", "description": "Sender full name" },
-        "email": { "type": "string", "description": "Sender contact email" },
-        "subject": { "type": "string", "description": "Subject of the inquiry" },
-        "message": { "type": "string", "description": "Message content or inquiry details" },
-        "createdAt": { "type": "number", "description": "Submission timestamp" }
+        "name": {
+          "type": "string",
+          "description": "Sender full name",
+          "maxLength": 100,
+          "minLength": 1
+        },
+        "email": {
+          "type": "string",
+          "description": "Sender email address",
+          "maxLength": 150,
+          "pattern": "^[^@]+@[^@]+\\.[^@]+$"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Sender phone number",
+          "maxLength": 30
+        },
+        "location": {
+          "type": "string",
+          "description": "Sender country or city location",
+          "maxLength": 100
+        },
+        "message": {
+          "type": "string",
+          "description": "Message content",
+          "maxLength": 3000,
+          "minLength": 2
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of creation"
+        },
+        "read": {
+          "type": "boolean",
+          "description": "Whether message has been reviewed by admin"
+        }
       },
       "required": ["name", "email", "message"]
+    },
+    "Video": {
+      "title": "Portfolio Reel Video",
+      "description": "Cinematic and custom showcase video entries in portfolio gallery",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique video identifier",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "description": "Video project title",
+          "maxLength": 150,
+          "minLength": 1
+        },
+        "category": {
+          "type": "string",
+          "description": "Genre category tag",
+          "maxLength": 60
+        },
+        "url": {
+          "type": "string",
+          "description": "Thumbnail or poster image URL",
+          "maxLength": 2048
+        },
+        "videoUrl": {
+          "type": "string",
+          "description": "Video stream source or Google Drive URL",
+          "maxLength": 2048
+        },
+        "caption": {
+          "type": "string",
+          "description": "Short project description",
+          "maxLength": 1000
+        },
+        "location": {
+          "type": "string",
+          "description": "Filming location",
+          "maxLength": 100
+        },
+        "camera": {
+          "type": "string",
+          "description": "Camera gear used",
+          "maxLength": 100
+        },
+        "lens": {
+          "type": "string",
+          "description": "Lens gear used",
+          "maxLength": 100
+        },
+        "settings": {
+          "type": "string",
+          "description": "Frame rate & resolution notes",
+          "maxLength": 100
+        },
+        "year": {
+          "type": "string",
+          "description": "Release year / tag",
+          "maxLength": 40
+        },
+        "column": {
+          "type": "number",
+          "description": "Grid column index (1-4)"
+        },
+        "aspectRatioClass": {
+          "type": "string",
+          "description": "CSS aspect ratio class",
+          "maxLength": 50
+        },
+        "duration": {
+          "type": "string",
+          "description": "Runtime duration string",
+          "maxLength": 20
+        },
+        "views": {
+          "type": "number",
+          "description": "Total play count"
+        },
+        "likes": {
+          "type": "number",
+          "description": "Community appreciation count"
+        },
+        "isCustom": {
+          "type": "boolean",
+          "description": "Custom user uploaded or Drive added video"
+        }
+      },
+      "required": ["id", "title", "url", "videoUrl"]
+    },
+    "AdminProfile": {
+      "title": "Admin Profile",
+      "description": "Admin configuration and privileged access metadata",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "description": "Admin email",
+          "maxLength": 150
+        },
+        "role": {
+          "type": "string",
+          "description": "Authorization level",
+          "enum": ["admin", "owner"]
+        }
+      },
+      "required": ["email", "role"]
     }
   },
   "firestore": {
-    "/portfolios/site_profile": {
-      "schema": { "$ref": "SiteProfile" },
-      "description": "Global website profile, personal bio, contact info, and metrics"
+    "/messages/{messageId}": {
+      "schema": {
+        "$ref": "Message"
+      },
+      "description": "Inquiries submitted through the portfolio contact form"
     },
-    "/portfolios/videography_catalog": {
-      "schema": { "$ref": "PortfolioCatalog" },
-      "description": "Videography films, cinematic reels, and video categories"
+    "/videos/{videoId}": {
+      "schema": {
+        "$ref": "Video"
+      },
+      "description": "Video gallery entries managed by portfolio owner"
     },
-    "/portfolios/photography_catalog": {
-      "schema": { "$ref": "PortfolioCatalog" },
-      "description": "Photography portfolio gallery, archive albums, and photo categories"
-    },
-    "/portfolios/projects_catalog": {
-      "schema": { "$ref": "ProjectsCatalog" },
-      "description": "Featured interactive design, frontend, and branding projects"
-    },
-    "/portfolios/timeline_catalog": {
-      "schema": { "$ref": "TimelineCatalog" },
-      "description": "Experience, education, and career milestones"
-    },
-    "/portfolios/skills_catalog": {
-      "schema": { "$ref": "SkillsCatalog" },
-      "description": "Technical capabilities, design tool stack, and proficiencies"
-    },
-    "/portfolios/polaroids_catalog": {
-      "schema": { "$ref": "PolaroidsCatalog" },
-      "description": "Curated visual memories and photo polaroids"
-    },
-    "/portfolios/admin_credentials": {
-      "schema": { "$ref": "AdminCredentials" },
-      "description": "Admin access security credentials"
-    },
-    "/contact_messages/{messageId}": {
-      "schema": { "$ref": "ContactMessage" },
-      "description": "User inquiries and client messages submitted via contact form"
+    "/admins/{userId}": {
+      "schema": {
+        "$ref": "AdminProfile"
+      },
+      "description": "Trusted admin identities and access verification"
     }
   }
 }

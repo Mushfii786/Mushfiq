@@ -58,11 +58,13 @@ export function ProjectModal({ project, onClose }: ProjectModalProps) {
             
             {/* Main Featured Image */}
             <div className="relative aspect-[16/9] w-full rounded-2xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800">
-              <img
-                src={project.image}
-                alt={project.title}
-                className="w-full h-full object-cover"
-              />
+              {project.image ? (
+                <img
+                  src={project.image}
+                  alt={project.title}
+                  className="w-full h-full object-cover"
+                />
+              ) : null}
             </div>
 
             {/* Overview & Specs */}
@@ -158,9 +160,11 @@ export function ProjectModal({ project, onClose }: ProjectModalProps) {
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {project.gallery.map((imgUrl, i) => (
-                    <div key={i} className="aspect-[16/10] rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 hover:scale-[1.03] transition-transform duration-300">
-                      <img src={imgUrl} alt={`Gallery ${i}`} className="w-full h-full object-cover" />
-                    </div>
+                    imgUrl ? (
+                      <div key={i} className="aspect-[16/10] rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 hover:scale-[1.03] transition-transform duration-300">
+                        <img src={imgUrl} alt={`Gallery ${i}`} className="w-full h-full object-cover" />
+                      </div>
+                    ) : null
                   ))}
                 </div>
               </div>

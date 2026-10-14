@@ -1,33 +1,109 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Portfolio showcase catalogs, profile, projects, media, and credentials
-    match /portfolios/{catalogId} {
-      allow read: if true;
-      allow write: if true;
-    }
 
-    // Public contact message submissions from visitors
-    match /contact_messages/{messageId} {
-      allow create: if request.resource.data.name is string
-                    && request.resource.data.name.size() > 0
-                    && request.resource.data.name.size() <= 200
-                    && request.resource.data.email is string
-                    && request.resource.data.email.size() <= 200
-                    && request.resource.data.message is string
-                    && request.resource.data.message.size() <= 5000;
-      allow read: if true;
-      allow update, delete: if true;
-    }
-
-    // Connection testing doc
-    match /test/{docId} {
-      allow read, write: if true;
-    }
-
-    // Catch-all fallback
+    // Default deny catch-all
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerified() && (
+        request.auth.token.email == 'muhammedmushfiq178@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin();
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll(['name', 'email', 'message']) &&
+        data.keys().hasOnly(['name', 'email', 'message', 'phone', 'location', 'createdAt', 'read']) &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+        data.email is string && data.email.size() <= 150 && data.email.matches('^[^@]+@[^@]+\\.[^@]+$') &&
+        data.message is string && data.message.size() >= 2 && data.message.size() <= 3000 &&
+        (!('phone' in data) || (data.phone is string && data.phone.size() <= 30)) &&
+        (!('location' in data) || (data.location is string && data.location.size() <= 100)) &&
+        (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 60)) &&
+        (!('read' in data) || data.read is bool);
+    }
+
+    function isValidVideo(data) {
+      return data.keys().hasAll(['id', 'title', 'url', 'videoUrl']) &&
+        data.keys().hasOnly([
+          'id', 'title', 'category', 'url', 'videoUrl', 'caption',
+          'location', 'camera', 'lens', 'settings', 'year', 'column',
+          'aspectRatioClass', 'duration', 'views', 'likes', 'isCustom'
+        ]) &&
+        isValidId(data.id) &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 150 &&
+        data.url is string && data.url.size() <= 2048 &&
+        data.videoUrl is string && data.videoUrl.size() <= 2048 &&
+        (!('category' in data) || (data.category is string && data.category.size() <= 60)) &&
+        (!('caption' in data) || (data.caption is string && data.caption.size() <= 1000)) &&
+        (!('location' in data) || (data.location is string && data.location.size() <= 100)) &&
+        (!('camera' in data) || (data.camera is string && data.camera.size() <= 100)) &&
+        (!('lens' in data) || (data.lens is string && data.lens.size() <= 100)) &&
+        (!('settings' in data) || (data.settings is string && data.settings.size() <= 100)) &&
+        (!('year' in data) || (data.year is string && data.year.size() <= 40)) &&
+        (!('column' in data) || (data.column is number && data.column >= 1 && data.column <= 4)) &&
+        (!('aspectRatioClass' in data) || (data.aspectRatioClass is string && data.aspectRatioClass.size() <= 50)) &&
+        (!('duration' in data) || (data.duration is string && data.duration.size() <= 20)) &&
+        (!('views' in data) || (data.views is number && data.views >= 0)) &&
+        (!('likes' in data) || (data.likes is number && data.likes >= 0)) &&
+        (!('isCustom' in data) || data.isCustom is bool);
+    }
+
+    // Messages collection
+    match /messages/{messageId} {
+      allow get, list: if isAdmin();
+      allow create: if isValidId(messageId) && isValidMessage(incoming());
+      allow update: if isAdmin() && isValidMessage(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // Videos collection
+    match /videos/{videoId} {
+      allow get, list: if true;
+      allow create: if isAdmin() && isValidId(videoId) && isValidVideo(incoming()) && incoming().id == videoId;
+      allow update: if (
+        isAdmin() && isValidVideo(incoming()) && incoming().id == existing().id
+      ) || (
+        isValidVideo(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['views', 'likes'])
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Admins collection
+    match /admins/{userId} {
+      allow get: if isAdmin();
+      allow list: if false;
+      allow write: if isAdmin();
     }
   }
 }

@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowUp, Instagram, Github, Linkedin, Mail, MessageCircle, Sparkles } from 'lucide-react';
+import { ArrowUp, Instagram, Github, Linkedin, Mail, MessageCircle, Sparkles, Shield } from 'lucide-react';
 import { siteConfig } from '../config/site';
-import { useFirebaseData } from '../context/FirebaseDataContext';
+import { useSiteContent } from '../context/SiteContentContext';
 
 export function Footer() {
-  const { siteProfile } = useFirebaseData();
   const [time, setTime] = useState<string>('');
+  const { siteContent } = useSiteContent();
 
   useEffect(() => {
     const updateClock = () => {
@@ -22,14 +22,14 @@ export function Footer() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const nameLetters = (siteProfile.initials || "MUSHFII").toUpperCase().split("");
+  const nameLetters = "MUSHFII".split("");
 
   const socialLinks = [
-    { name: "Instagram", url: siteProfile.socials?.instagram || siteConfig.socials.instagram, icon: Instagram },
-    { name: "GitHub", url: siteProfile.socials?.github || siteConfig.socials.github, icon: Github },
-    { name: "LinkedIn", url: siteProfile.socials?.linkedin || siteConfig.socials.linkedin, icon: Linkedin },
-    { name: "WhatsApp", url: siteProfile.socials?.whatsapp || siteConfig.socials.whatsapp, icon: MessageCircle },
-    { name: "Email", url: siteProfile.socials?.email || siteConfig.socials.email, icon: Mail },
+    { name: "Instagram", url: siteContent?.socials?.instagram || siteConfig.socials.instagram, icon: Instagram },
+    { name: "GitHub", url: siteContent?.socials?.github || siteConfig.socials.github, icon: Github },
+    { name: "LinkedIn", url: siteContent?.socials?.linkedin || siteConfig.socials.linkedin, icon: Linkedin },
+    { name: "WhatsApp", url: siteContent?.socials?.whatsapp || siteConfig.socials.whatsapp, icon: MessageCircle },
+    { name: "Email", url: siteContent?.socials?.email || siteConfig.socials.email, icon: Mail },
   ];
 
   return (
@@ -66,7 +66,7 @@ export function Footer() {
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
           </span>
           <span className="text-[10px] sm:text-[11px] font-mono text-neutral-300 tracking-wider uppercase">
-            AVAILABLE FOR FREELANCE PROJECTS
+            {siteContent?.hero?.availabilityBadge || 'AVAILABLE FOR FREELANCE PROJECTS'}
           </span>
           <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-purple-400 group-hover:rotate-12 transition-transform duration-300" />
         </motion.div>
@@ -98,7 +98,7 @@ export function Footer() {
 
         {/* Minimal Tagline / Bio */}
         <p className="text-xs sm:text-sm text-neutral-400 font-light max-w-md sm:max-w-lg mx-auto leading-relaxed px-2">
-          Video Editor & Visual Designer crafting cinematic stories, stunning photography, and impactful creative designs.
+          {siteContent?.footer?.tagline || 'Video Editor & Visual Designer crafting cinematic stories, stunning photography, and impactful creative designs.'}
         </p>
 
         {/* Navigation Bar */}
@@ -144,12 +144,23 @@ export function Footer() {
           <div className="absolute w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_10px_#8B5CF6]" />
         </div>
 
-        {/* Bottom Row: Copyright & Premium Back to Top Button */}
+        {/* Bottom Row: Copyright, Discreet Admin Icon, & Back to Top Button */}
         <div className="flex flex-col sm:flex-row items-center justify-between w-full text-xs font-mono text-neutral-400 gap-3 sm:gap-4 pt-1">
 
-          {/* Copyright Notice */}
-          <div className="text-neutral-400 text-[10px] sm:text-xs font-sans tracking-wider text-center sm:text-left">
-            © 2026 <span className="text-white font-extrabold tracking-widest uppercase">MUSHFII</span>. Photography <span className="text-purple-400/80 mx-0.5 sm:mx-1">•</span> Videography <span className="text-purple-400/80 mx-0.5 sm:mx-1">•</span> Design
+          {/* Copyright Notice & Discreet Admin Icon */}
+          <div className="flex items-center gap-2 text-neutral-400 text-[10px] sm:text-xs font-sans tracking-wider text-center sm:text-left">
+            <span>
+              {siteContent?.footer?.copyrightText || '© 2026 MUSHFII. Photography • Videography • Design'}
+            </span>
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-admin-panel'))}
+              title="Admin Login & Dashboard"
+              aria-label="Admin Login"
+              className="inline-flex items-center justify-center w-5 h-5 rounded-md text-neutral-600 hover:text-blue-400 hover:bg-neutral-900/80 transition-colors focus:outline-none focus:ring-1 focus:ring-blue-400/50 cursor-pointer"
+            >
+              <Shield className="w-3.5 h-3.5" />
+            </button>
           </div>
 
           <div className="flex items-center gap-3">

@@ -632,7 +632,7 @@ export function AddGoogleDriveVideoModal({
                             alt="Selected video cover thumbnail"
                             className="w-full h-full object-cover"
                           />
-                        ) : (
+                        ) : galleryVideoUrl ? (
                           <video
                             ref={previewVideoRef}
                             src={galleryVideoUrl}
@@ -640,7 +640,7 @@ export function AddGoogleDriveVideoModal({
                             playsInline
                             className="w-full h-full object-contain"
                           />
-                        )}
+                        ) : null}
 
                         {/* Selected Cover Badge */}
                         <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-black/80 backdrop-blur-md border border-white/20 text-white font-mono text-[10px] flex items-center gap-1.5 shadow-md z-10">
@@ -807,7 +807,7 @@ export function AddGoogleDriveVideoModal({
                             </div>
                           )}
 
-                          {testPreviewOpen && (
+                          {testPreviewOpen && detectedDriveId && (
                             <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-black border border-white/10 shadow-inner">
                               <iframe
                                 src={`https://drive.google.com/file/d/${detectedDriveId}/preview`}

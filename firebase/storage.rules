@@ -1,0 +1,33 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function checking if request is from the authenticated administrator
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.token.email == 'muhammedmushfiq178@gmail.com' ||
+        request.auth.token.email == 'admin@mushfii.com' ||
+        request.auth.token.admin == true
+      );
+    }
+
+    // Media files (photos, thumbnails, avatars, general assets)
+    // Public read so portfolio visitors can view media
+    // Admin-only write with size restrictions
+    match /media/{folder}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin() && (
+        // Photos, avatars & thumbnails max 25MB
+        (folder in ['photos', 'thumbnails', 'avatars', 'general'] && request.resource.size < 25 * 1024 * 1024) ||
+        // Videos max 250MB
+        (folder == 'videos' && request.resource.size < 250 * 1024 * 1024)
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Default deny all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

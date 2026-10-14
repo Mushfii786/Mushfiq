@@ -1,95 +1,62 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { ArrowRight, Video } from 'lucide-react';
-import { videography } from '../config/site';
+import { videography as fallbackVideography } from '../config/site';
 import { VideoItem } from '../types';
 import { VideoLightbox } from './VideoLightbox';
 import { VideoGalleryPage } from './VideoGalleryPage';
 import { CoverFlowGallery, CoverFlowItem } from './CoverFlowGallery';
-
-import { useFirebaseData } from '../context/FirebaseDataContext';
+import { useSiteContent } from '../context/SiteContentContext';
 
 export function Videography() {
-  const { videos: firebaseVideos } = useFirebaseData();
+  const { videos } = useSiteContent();
   const [activeVideo, setActiveVideo] = useState<VideoItem | null>(null);
   const [showFullGallery, setShowFullGallery] = useState(false);
-  const [videoCoverFlowData, setVideoCoverFlowData] = useState<CoverFlowItem[]>(() => {
-    try {
-      const saved = localStorage.getItem('mushfiq_custom_videos_catalog_v2');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.slice(0, 15).map((v: any) => ({
-            id: v.id,
-            title: v.title,
-            subtitle: v.caption ? v.caption : `${v.location || v.category || ''} ${v.year ? '• ' + v.year : ''}`.trim(),
-            category: v.category,
-            url: v.url || v.posterUrl,
-            type: 'video',
-            data: v,
-          }));
-        }
-      }
-    } catch (e) {}
-    return videography.map((v) => ({
+
+  // Derive published videos from Firebase / Content layer
+  const publishedVideos: VideoItem[] = useMemo(() => {
+    const list = videos.filter((v) => v.published);
+    if (list.length > 0) {
+      return list.map((v) => ({
+        id: v.id,
+        title: v.title,
+        category: v.category,
+        posterUrl: v.thumbnailUrl || v.videoUrl,
+        videoUrl: v.videoUrl,
+        caption: v.caption,
+        location: v.location || '',
+        duration: v.duration || '0:45',
+        camera: v.camera,
+        lens: v.lens,
+        settings: v.settings,
+        year: v.year || '2026 Film',
+        views: v.views || 1000,
+        likes: v.likes || 120,
+      }));
+    }
+    return fallbackVideography;
+  }, [videos]);
+
+  const videoCoverFlowData: CoverFlowItem[] = useMemo(() => {
+    return publishedVideos.slice(0, 15).map((v) => ({
       id: v.id,
       title: v.title,
-      subtitle: `${v.location} • ${v.year}`,
+      subtitle: v.caption ? v.caption : `${v.location || v.category || ''} ${v.year ? '• ' + v.year : ''}`.trim(),
       category: v.category,
       url: v.posterUrl,
       type: 'video',
       data: v,
     }));
-  });
-
-  // Sync with live Firebase videos
-  useEffect(() => {
-    if (firebaseVideos && firebaseVideos.length > 0) {
-      setVideoCoverFlowData(
-        firebaseVideos.slice(0, 15).map((v: any) => ({
-          id: v.id,
-          title: v.title,
-          subtitle: v.caption ? v.caption : `${v.location || v.category || ''} ${v.year ? '• ' + v.year : ''}`.trim(),
-          category: v.category,
-          url: v.url || v.posterUrl,
-          type: 'video',
-          data: v,
-        }))
-      );
-    }
-  }, [firebaseVideos]);
+  }, [publishedVideos]);
 
   useEffect(() => {
     const handleOpenGallery = () => {
       setShowFullGallery(true);
     };
-    const handleSync = () => {
-      try {
-        const saved = localStorage.getItem('mushfiq_custom_videos_catalog_v2');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setVideoCoverFlowData(
-              parsed.slice(0, 15).map((v: any) => ({
-                id: v.id,
-                title: v.title,
-                subtitle: v.caption ? v.caption : `${v.location || v.category || ''} ${v.year ? '• ' + v.year : ''}`.trim(),
-                category: v.category,
-                url: v.url || v.posterUrl,
-                type: 'video',
-                data: v,
-              }))
-            );
-          }
-        }
-      } catch (e) {}
-    };
 
     window.addEventListener('open-video-gallery', handleOpenGallery);
-    window.addEventListener('sync-custom-videos', handleSync);
     return () => {
       window.removeEventListener('open-video-gallery', handleOpenGallery);
-      window.removeEventListener('sync-custom-videos', handleSync);
     };
   }, []);
 
@@ -161,7 +128,7 @@ export function Videography() {
       {activeVideo && (
         <VideoLightbox
           video={activeVideo}
-          videos={videography}
+          videos={publishedVideos}
           onClose={() => setActiveVideo(null)}
           onSelectVideo={(v) => setActiveVideo(v)}
         />

@@ -185,12 +185,14 @@ export function CoverFlowGallery({
               >
                 {/* Image Wrap */}
                 <div className="relative w-full aspect-[4/5] rounded-[1.4rem] overflow-hidden bg-neutral-950 border border-neutral-800 shadow-inner group">
-                  <img
-                    src={item.url}
-                    alt={item.title}
-                    className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
-                    loading="lazy"
-                  />
+                  {item.url ? (
+                    <img
+                      src={item.url}
+                      alt={item.title}
+                      className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+                      loading="lazy"
+                    />
+                  ) : null}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 group-hover:opacity-40 transition-opacity" />
 
                   {/* Hover Overlay Badge for active card */}

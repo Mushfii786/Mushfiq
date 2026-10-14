@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import confetti from 'canvas-confetti';
 import { Mail, Phone, MapPin, Send, Instagram, Github, Linkedin, MessageSquare, Globe, Check, Loader2 } from 'lucide-react';
 import { siteConfig } from '../config/site';
-import { saveContactMessageToFirebase } from '../utils/firebase';
+import { saveContactMessage } from '../lib/firebase';
 
 export function Contact() {
   const [formSubmitted, setFormSubmitted] = useState(false);
@@ -45,6 +45,19 @@ export function Contact() {
     try {
       const params = new URLSearchParams(payload);
 
+      // Save to Firebase Firestore
+      try {
+        await saveContactMessage({
+          name: payload.name,
+          email: payload.email,
+          phone: payload.phone,
+          location: payload.location,
+          message: payload.message,
+        });
+      } catch (fbErr) {
+        console.warn('Firestore message save note:', fbErr);
+      }
+
       await fetch(`${webhookUrl}?${params.toString()}`, {
         method: 'POST',
         mode: 'no-cors',
@@ -53,12 +66,6 @@ export function Contact() {
         },
         body: JSON.stringify(payload)
       });
-
-      try {
-        await saveContactMessageToFirebase(payload);
-      } catch (fbErr) {
-        console.error('Firebase save error:', fbErr);
-      }
 
       setFormSubmitted(true);
       try {

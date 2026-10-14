@@ -106,23 +106,27 @@ export function PhotoLightbox({ photo, photos, onClose, onSelectPhoto }: PhotoLi
           {/* Inner Frame */}
           <div className="relative w-full h-[380px] sm:h-[460px] bg-[#181920] border border-white/10 rounded-[24px] overflow-hidden flex items-center justify-center shadow-inner">
             {/* Ambient Blurred Background Image */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <img
-                src={photo.url}
-                alt=""
-                aria-hidden="true"
-                className="w-full h-full object-cover blur-2xl scale-125 opacity-35 select-none"
-              />
-              <div className="absolute inset-0 bg-neutral-950/40" />
-            </div>
+            {photo.url ? (
+              <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <img
+                  src={photo.url}
+                  alt=""
+                  aria-hidden="true"
+                  className="w-full h-full object-cover blur-2xl scale-125 opacity-35 select-none"
+                />
+                <div className="absolute inset-0 bg-neutral-950/40" />
+              </div>
+            ) : null}
 
             {/* Main Photo Image - Fitted to Height */}
             <div className="relative z-10 w-full h-full flex items-center justify-center p-2 rounded-[20px] overflow-hidden">
-              <img
-                src={photo.url}
-                alt={photo.title}
-                className="h-full w-auto max-w-full object-contain rounded-[18px] select-none block shadow-2xl"
-              />
+              {photo.url ? (
+                <img
+                  src={photo.url}
+                  alt={photo.title}
+                  className="h-full w-auto max-w-full object-contain rounded-[18px] select-none block shadow-2xl"
+                />
+              ) : null}
             </div>
 
             {/* Premium Download Pill Button */}

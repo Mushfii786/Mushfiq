@@ -23,19 +23,21 @@ import {
   ArrowLeft,
   ShieldCheck,
   Check,
-  Camera,
-  Image as ImageIcon
+  Flame,
+  Database,
+  Inbox,
+  Calendar,
+  MessageSquare
 } from 'lucide-react';
 import { VideoGalleryItem } from './VideoGalleryPage';
-import { fetchAdminCredsFromFirebase, saveAdminCredsToFirebase } from '../utils/firebase';
+import { useFirebase } from '../context/FirebaseContext';
 
 interface AdminAuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onOpenAddVideoModal?: () => void;
-  onOpenAddPhotoModal?: () => void;
-  customVideos?: VideoGalleryItem[];
-  onDeleteCustomVideo?: (id: string, e: React.MouseEvent) => void;
+  onOpenAddVideoModal: () => void;
+  customVideos: VideoGalleryItem[];
+  onDeleteCustomVideo: (id: string, e: React.MouseEvent) => void;
   onSelectVideo?: (video: VideoGalleryItem) => void;
   isAuthenticated: boolean;
   setIsAuthenticated: (val: boolean) => void;
@@ -50,8 +52,7 @@ export function AdminAuthModal({
   isOpen,
   onClose,
   onOpenAddVideoModal,
-  onOpenAddPhotoModal,
-  customVideos = [],
+  customVideos,
   onDeleteCustomVideo,
   onSelectVideo,
   isAuthenticated,
@@ -105,27 +106,44 @@ export function AdminAuthModal({
     return { id: DEFAULT_ADMIN_ID, pass: DEFAULT_ADMIN_PASS };
   };
 
-  useEffect(() => {
-    fetchAdminCredsFromFirebase().then((creds) => {
-      if (creds && creds.id && creds.pass) {
-        try {
-          localStorage.setItem(CREDS_STORAGE_KEY, JSON.stringify(creds));
-        } catch {}
-      }
-    });
-  }, []);
+  const { user, isAdmin, loginWithGoogle, logout: fbLogout, messages, unreadCount } = useFirebase();
+  const [activeTab, setActiveTab] = useState<'videos' | 'inquiries'>('videos');
+  const [isLoggingInGoogle, setIsLoggingInGoogle] = useState(false);
 
-  // Check initial session
+  // Check initial session or Firebase auth state
   useEffect(() => {
     try {
       const session = sessionStorage.getItem(SESSION_STORAGE_KEY);
-      if (session === 'true') {
+      if (session === 'true' || (user && user.email?.toLowerCase() === targetEmail.toLowerCase())) {
         setIsAuthenticated(true);
       }
     } catch {
       // ignore
     }
-  }, [setIsAuthenticated]);
+  }, [setIsAuthenticated, user]);
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsLoggingInGoogle(true);
+      setErrorMsg('');
+      const loggedUser = await loginWithGoogle();
+      if (loggedUser && loggedUser.email?.toLowerCase() === targetEmail.toLowerCase()) {
+        setIsAuthenticated(true);
+        setSuccessMsg(`Google Authentication Verified. Welcome Muhammed Mushfiq.`);
+        try {
+          sessionStorage.setItem(SESSION_STORAGE_KEY, 'true');
+        } catch {}
+      } else if (loggedUser) {
+        setErrorMsg(`Signed in as ${loggedUser.email}, but admin privileges belong to ${targetEmail}.`);
+      }
+    } catch (err: any) {
+      if (!err?.message?.includes('closed-by-user')) {
+        setErrorMsg('Google Sign-In failed: ' + (err?.message || 'Please check popup settings.'));
+      }
+    } finally {
+      setIsLoggingInGoogle(false);
+    }
+  };
 
   // Handle Resend OTP Countdown
   useEffect(() => {
@@ -178,6 +196,7 @@ export function AdminAuthModal({
     setAdminId('');
     setAdminPass('');
     setSuccessMsg('');
+    fbLogout().catch(() => {});
     try {
       sessionStorage.removeItem(SESSION_STORAGE_KEY);
     } catch {
@@ -185,7 +204,7 @@ export function AdminAuthModal({
     }
   };
 
-  const handleSaveNewCreds = async (e: React.FormEvent) => {
+  const handleSaveNewCreds = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAdminId.trim() || !newAdminPass.trim()) {
       setCredChangeMsg('Both Admin ID and Password are required.');
@@ -194,8 +213,7 @@ export function AdminAuthModal({
     const updated = { id: newAdminId.trim(), pass: newAdminPass.trim() };
     try {
       localStorage.setItem(CREDS_STORAGE_KEY, JSON.stringify(updated));
-      await saveAdminCredsToFirebase(updated.id, updated.pass);
-      setCredChangeMsg('Credentials updated & saved to Firebase!');
+      setCredChangeMsg('Credentials updated successfully!');
       setTimeout(() => {
         setIsChangingCreds(false);
         setCredChangeMsg('');
@@ -203,7 +221,7 @@ export function AdminAuthModal({
         setNewAdminPass('');
       }, 1500);
     } catch {
-      setCredChangeMsg('Failed to save new credentials.');
+      setCredChangeMsg('Failed to save new credentials to local storage.');
     }
   };
 
@@ -620,7 +638,7 @@ export function AdminAuthModal({
             </form>
           ) : !isAuthenticated ? (
             /* Login Form */
-            <form onSubmit={handleLogin} className="space-y-4 font-sans">
+            <div className="space-y-4 font-sans">
               {errorMsg && (
                 <div className="p-3.5 rounded-2xl bg-red-950/40 border border-red-500/40 text-xs text-red-300 flex items-center gap-2.5 font-sans">
                   <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
@@ -635,57 +653,75 @@ export function AdminAuthModal({
                 </div>
               )}
 
-              {/* Admin ID Field */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-neutral-300 flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5 text-blue-400" />
-                  <span>Admin ID / Username</span>
-                </label>
-                <input
-                  type="text"
-                  value={adminId}
-                  onChange={(e) => setAdminId(e.target.value)}
-                  placeholder="Enter admin ID"
-                  required
-                  autoFocus
-                  className="w-full px-4 py-3 rounded-2xl bg-black/40 border border-white/[0.12] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-xs font-mono text-white placeholder-neutral-500 transition-all outline-none shadow-inner"
-                />
-              </div>
-
-              {/* Password Field */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-neutral-300 flex items-center gap-1.5">
-                  <KeyRound className="w-3.5 h-3.5 text-blue-400" />
-                  <span>Password</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPass ? 'text' : 'password'}
-                    value={adminPass}
-                    onChange={(e) => setAdminPass(e.target.value)}
-                    placeholder="Enter password"
-                    required
-                    className="w-full px-4 py-3 pr-11 rounded-2xl bg-black/40 border border-white/[0.12] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-xs font-mono text-white placeholder-neutral-500 transition-all outline-none shadow-inner"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPass(!showPass)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white cursor-pointer"
-                  >
-                    {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Submit Button */}
+              {/* Google Sign-in with Firebase Button */}
               <button
-                type="submit"
-                className="w-full py-3 mt-2 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:brightness-110 text-white text-xs font-bold tracking-wider uppercase transition-all duration-200 flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(37,99,235,0.4)] cursor-pointer"
+                type="button"
+                onClick={handleGoogleSignIn}
+                disabled={isLoggingInGoogle}
+                className="w-full py-3.5 rounded-2xl bg-white/[0.07] hover:bg-white/[0.13] border border-white/15 hover:border-blue-400/50 text-white text-xs font-bold tracking-wider uppercase transition-all duration-200 flex items-center justify-center gap-2.5 shadow-lg cursor-pointer group disabled:opacity-50"
               >
-                <Unlock className="w-4 h-4" />
-                <span>Verify & Access Admin</span>
+                <Flame className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
+                <span>{isLoggingInGoogle ? 'Connecting with Google...' : 'Sign in with Google (Owner Account)'}</span>
               </button>
-            </form>
+
+              <div className="flex items-center gap-3 my-2">
+                <div className="h-px flex-1 bg-white/[0.08]" />
+                <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest">or passkey ID</span>
+                <div className="h-px flex-1 bg-white/[0.08]" />
+              </div>
+
+              <form onSubmit={handleLogin} className="space-y-4">
+                {/* Admin ID Field */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-neutral-300 flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-blue-400" />
+                    <span>Admin ID / Username</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={adminId}
+                    onChange={(e) => setAdminId(e.target.value)}
+                    placeholder="Enter admin ID"
+                    required
+                    className="w-full px-4 py-3 rounded-2xl bg-black/40 border border-white/[0.12] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-xs font-mono text-white placeholder-neutral-500 transition-all outline-none shadow-inner"
+                  />
+                </div>
+
+                {/* Password Field */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-neutral-300 flex items-center gap-1.5">
+                    <KeyRound className="w-3.5 h-3.5 text-blue-400" />
+                    <span>Password</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPass ? 'text' : 'password'}
+                      value={adminPass}
+                      onChange={(e) => setAdminPass(e.target.value)}
+                      placeholder="Enter password"
+                      required
+                      className="w-full px-4 py-3 pr-11 rounded-2xl bg-black/40 border border-white/[0.12] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-xs font-mono text-white placeholder-neutral-500 transition-all outline-none shadow-inner"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPass(!showPass)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white cursor-pointer"
+                    >
+                      {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  className="w-full py-3 mt-2 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:brightness-110 text-white text-xs font-bold tracking-wider uppercase transition-all duration-200 flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(37,99,235,0.4)] cursor-pointer"
+                >
+                  <Unlock className="w-4 h-4" />
+                  <span>Verify & Access Admin</span>
+                </button>
+              </form>
+            </div>
           ) : isChangingCreds ? (
             /* Change Credentials Screen */
             <form onSubmit={handleSaveNewCreds} className="space-y-4 font-sans">
@@ -745,7 +781,7 @@ export function AdminAuthModal({
             </form>
           ) : (
             /* Authenticated Admin Dashboard */
-            <div className="space-y-5 font-sans">
+            <div className="space-y-4 font-sans">
               {successMsg && (
                 <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 text-xs text-emerald-300 flex items-center gap-2 font-medium">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
@@ -753,40 +789,48 @@ export function AdminAuthModal({
                 </div>
               )}
 
-              {/* Photo Upload & Photography Section */}
-              {Boolean(onOpenAddPhotoModal || !onOpenAddVideoModal) && (
-                <div className="p-5 rounded-3xl bg-gradient-to-b from-[#181320]/90 to-[#0d0914]/95 border border-purple-500/30 space-y-3.5 shadow-2xl backdrop-blur-xl">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-purple-300 font-bold uppercase tracking-wider flex items-center gap-2">
-                      <Camera className="w-4 h-4 text-purple-400" />
-                      <span>Photo Upload & Photography Hub</span>
-                    </span>
-                    <span className="px-2.5 py-0.5 rounded-full bg-purple-500/15 border border-purple-400/30 text-purple-300 text-[10px] font-mono font-medium">
-                      Gallery Master
-                    </span>
-                  </div>
-                  <p className="text-xs text-neutral-300">
-                    Select and upload high-resolution photography, poster designs, or artwork directly from your device gallery with live preview.
-                  </p>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClose();
-                      if (onOpenAddPhotoModal) {
-                        onOpenAddPhotoModal();
-                      }
-                    }}
-                    className="w-full py-3 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:brightness-110 text-white text-xs font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(168,85,247,0.4)] cursor-pointer hover:scale-[1.01] active:scale-95"
-                  >
-                    <Plus className="w-4 h-4 stroke-[2.5]" />
-                    <span>+ Upload New Photo from Gallery</span>
-                  </button>
+              {/* Status Header: Firebase Connection Badge */}
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-[11px] font-mono">
+                <div className="flex items-center gap-2 text-neutral-300">
+                  <Flame className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Firebase & Firestore</span>
                 </div>
-              )}
+                <div className="flex items-center gap-1.5 text-emerald-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Online & Secure</span>
+                </div>
+              </div>
 
-              {/* Video Upload & Streaming Section */}
-              {Boolean(onOpenAddVideoModal) && (
+              {/* Tab Navigation */}
+              <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-black/50 border border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('videos')}
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-semibold tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    activeTab === 'videos'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'text-neutral-400 hover:text-white hover:bg-white/[0.05]'
+                  }`}
+                >
+                  <Video className="w-3.5 h-3.5" />
+                  <span>Reels & Videos</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('inquiries')}
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-semibold tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    activeTab === 'inquiries'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'text-neutral-400 hover:text-white hover:bg-white/[0.05]'
+                  }`}
+                >
+                  <Inbox className="w-3.5 h-3.5" />
+                  <span>Client Inquiries ({messages.length})</span>
+                </button>
+              </div>
+
+              {activeTab === 'videos' ? (
+                /* Primary Action: Add Video from Gallery or Drive */
                 <div className="p-5 rounded-3xl bg-gradient-to-b from-[#10131d]/90 to-[#090b12]/95 border border-blue-500/30 space-y-3.5 shadow-2xl backdrop-blur-xl">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-blue-300 font-bold uppercase tracking-wider flex items-center gap-2">
@@ -802,18 +846,74 @@ export function AdminAuthModal({
                   </p>
 
                   <button
-                    type="button"
                     onClick={() => {
                       onClose();
-                      if (onOpenAddVideoModal) {
-                        onOpenAddVideoModal();
-                      }
+                      onOpenAddVideoModal();
                     }}
-                    className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#2563EB] via-[#4F46E5] to-[#3B82F6] hover:brightness-110 text-white text-xs font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(37,99,235,0.4)] cursor-pointer hover:scale-[1.01] active:scale-95"
+                    className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#2563EB] via-[#4F46E5] to-[#3B82F6] hover:brightness-110 text-white text-xs font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(37,99,235,0.4)] cursor-pointer"
                   >
                     <Plus className="w-4 h-4 stroke-[2.5]" />
                     <span>+ Add Video from Gallery or Drive</span>
                   </button>
+                </div>
+              ) : (
+                /* Tab 2: Firestore Contact Messages Live Feed */
+                <div className="space-y-2.5 max-h-[340px] overflow-y-auto pr-1">
+                  {messages.length === 0 ? (
+                    <div className="p-8 text-center rounded-2xl bg-black/40 border border-white/[0.08] space-y-2">
+                      <MessageSquare className="w-8 h-8 text-neutral-500 mx-auto" />
+                      <p className="text-xs font-semibold text-neutral-300">No Inquiries Yet</p>
+                      <p className="text-[11px] text-neutral-500">
+                        When visitors submit your portfolio contact form, inquiries will appear here in real time via Firestore.
+                      </p>
+                    </div>
+                  ) : (
+                    messages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className="p-3.5 rounded-2xl bg-black/50 border border-white/[0.08] hover:border-blue-500/30 transition-colors space-y-2"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-xs font-bold text-white flex items-center gap-1.5">
+                              <span>{msg.name}</span>
+                              {msg.location && (
+                                <span className="text-[10px] font-normal text-neutral-400">
+                                  ({msg.location})
+                                </span>
+                              )}
+                            </p>
+                            <a
+                              href={`mailto:${msg.email}`}
+                              className="text-[11px] font-mono text-blue-400 hover:underline"
+                            >
+                              {msg.email}
+                            </a>
+                            {msg.phone && (
+                              <p className="text-[10px] font-mono text-neutral-400">{msg.phone}</p>
+                            )}
+                          </div>
+                          {msg.createdAt && (
+                            <span className="text-[9px] font-mono text-neutral-500 whitespace-nowrap">
+                              {new Date(msg.createdAt).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-neutral-300 bg-white/[0.02] p-2.5 rounded-xl border border-white/[0.04] leading-relaxed">
+                          {msg.message}
+                        </p>
+                        <div className="pt-1 flex items-center justify-end">
+                          <a
+                            href={`mailto:${msg.email}?subject=Reply%20from%20Muhammed%20Mushfiq`}
+                            className="inline-flex items-center gap-1 text-[11px] font-mono text-blue-400 hover:text-blue-300 cursor-pointer"
+                          >
+                            <Send className="w-3 h-3" />
+                            <span>Reply via Email</span>
+                          </a>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               )}
 
