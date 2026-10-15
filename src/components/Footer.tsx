@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowUp, Instagram, Github, Linkedin, Mail, MessageCircle, Sparkles, Shield } from 'lucide-react';
 import { siteConfig } from '../config/site';
-import { useSiteContent } from '../context/SiteContentContext';
 
 export function Footer() {
   const [time, setTime] = useState<string>('');
-  const { siteContent } = useSiteContent();
+  const siteContent = siteConfig;
+
 
   useEffect(() => {
     const updateClock = () => {

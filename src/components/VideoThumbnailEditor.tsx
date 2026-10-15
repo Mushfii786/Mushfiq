@@ -541,8 +541,10 @@ export function VideoThumbnailEditor({
         ctx.drawImage(vid, offsetX, offsetY, drawW, drawH);
       } else if (filmstripFrames[selectedFrameIndex]) {
         const img = new Image();
+        img.crossOrigin = 'anonymous';
         await new Promise<void>((res) => {
           img.onload = () => res();
+          img.onerror = () => res();
           img.src = filmstripFrames[selectedFrameIndex].dataUrl;
         });
         canvas.width = 1080;
@@ -550,8 +552,10 @@ export function VideoThumbnailEditor({
         ctx.drawImage(img, 0, 0, 1080, 1920);
       } else if (initialThumbnail) {
         const img = new Image();
+        img.crossOrigin = 'anonymous';
         await new Promise<void>((res) => {
           img.onload = () => res();
+          img.onerror = () => res();
           img.src = initialThumbnail;
         });
         canvas.width = 1080;

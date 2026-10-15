@@ -6,11 +6,11 @@ import { GradientText } from './hero/GradientText';
 import { HeroDock } from './hero/HeroDock';
 import { CursorGlow } from './hero/CursorGlow';
 import { siteConfig } from '../config/site';
-import { useSiteContent } from '../context/SiteContentContext';
 
 export function Hero() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { siteContent } = useSiteContent();
+  const siteContent = siteConfig;
+
 
   // Parallax on scroll
   const { scrollYProgress } = useScroll({
