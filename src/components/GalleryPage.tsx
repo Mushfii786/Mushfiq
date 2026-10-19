@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, useDeferredValue } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, X, Heart, Share2, Sparkles, Layers, Palette, Check, Camera, Download, MapPin, ChevronLeft, ChevronRight, Search, SlidersHorizontal } from 'lucide-react';
+import { ArrowLeft, X, Heart, Share2, Sparkles, Layers, Palette, Check, Camera, Download, MapPin, ChevronLeft, ChevronRight, Search, SlidersHorizontal, Video, Play } from 'lucide-react';
+import { videography } from '../config/site';
 import RegeneratedImage from '../assets/images/regenerated_image_1786114032574.png'; 
 import RegeneratedImage2 from '../assets/images/regenerated_image_1786192879031.jpg'; 
 import FortKochi from '../assets/images/FortKochi.jpg';
@@ -51,8 +52,9 @@ interface GalleryPageProps {
 export interface GalleryItem {
   id: string;
   title: string;
-  category: 'Photography' | 'Poster Designing' | 'Photo Editing';
+  category: 'Photography' | 'Poster Designing' | 'Photo Editing' | 'Videography';
   url: string;
+  videoUrl?: string;
   caption: string;
   clientOrEvent?: string;
   tools?: string;
@@ -508,14 +510,116 @@ export const galleryGridPhotos: GalleryItem[] = [
     tools: "Illustrator • Photoshop",
     year: "2026",
     badge: "Poster"
-  }
+  },
+  // ================= VIDEOGRAPHY =================
+  ...videography.map((v) => ({
+    id: `gal-${v.id}`,
+    title: v.title,
+    category: 'Videography' as const,
+    url: v.posterUrl,
+    videoUrl: v.videoUrl,
+    caption: v.caption,
+    clientOrEvent: v.location,
+    tools: `${v.camera} • ${v.lens}`,
+    year: v.year,
+    badge: v.category
+  }))
 ];
 
 const categories = [
   { id: 'ALL', label: 'All Works', icon: Sparkles },
   { id: 'PHOTOGRAPHY', label: 'Photography', icon: Camera },
   { id: 'POSTER DESIGNING', label: 'Poster Designing', icon: Layers },
+  { id: 'VIDEOGRAPHY', label: 'Videography', icon: Video },
 ];
+
+interface GalleryCardProps {
+  item: GalleryItem;
+  onClick: () => void;
+}
+
+function GalleryCard({ item, onClick }: GalleryCardProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+    if (videoRef.current && item.videoUrl) {
+      videoRef.current.currentTime = 0;
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          // Ignore automatic play abort or browser policy errors
+        });
+      }
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  };
+
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      className="group relative flex flex-col p-1.5 pb-2 sm:p-3 sm:pb-4 rounded-[14px] sm:rounded-[24px] md:rounded-[28px] bg-[#111216]/95 border sm:border-2 border-[#2563EB]/70 hover:border-[#3B82F6] shadow-[0_6px_20px_rgba(0,0,0,0.7),0_0_12px_rgba(37,99,235,0.15)] hover:shadow-[0_16px_40px_rgba(0,0,0,0.9),0_0_30px_rgba(37,99,235,0.35)] transition-all duration-300 active:scale-[0.97] cursor-pointer animate-fadeIn"
+    >
+      {/* Image / Video Container with Rounded Inside */}
+      <div className="relative w-full aspect-[4/5] rounded-[10px] sm:rounded-[18px] md:rounded-[20px] overflow-hidden bg-neutral-950 border border-neutral-800/60 shadow-inner">
+        {/* Base Poster / Photo */}
+        <img
+          src={item.url}
+          alt={item.title}
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          className={`w-full h-full object-cover transition-all duration-500 ease-out group-hover:scale-105 ${
+            isHovered && item.videoUrl ? 'opacity-0' : 'opacity-100'
+          }`}
+        />
+
+        {/* Hover Auto Preview Video */}
+        {item.videoUrl && (
+          <video
+            ref={videoRef}
+            src={item.videoUrl}
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 pointer-events-none ${
+              isHovered ? 'opacity-100 scale-105' : 'opacity-0 scale-100'
+            }`}
+          />
+        )}
+
+        {/* Play Icon Badge */}
+        {item.category === 'Videography' && (
+          <div className={`absolute top-2 right-2 sm:top-2.5 sm:right-2.5 z-10 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-black/75 backdrop-blur-md border border-white/25 flex items-center justify-center text-white shadow-lg transition-all duration-200 ${
+            isHovered ? 'bg-[#2563EB] border-[#2563EB] scale-110' : 'group-hover:bg-[#2563EB] group-hover:border-[#2563EB]'
+          }`}>
+            <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-white text-white ml-0.5" />
+          </div>
+        )}
+      </div>
+
+      {/* Centered Typography Matching Reference Card */}
+      <div className="mt-1.5 sm:mt-3 text-center px-0.5 sm:px-1">
+        <h3 className="text-[11px] xs:text-xs sm:text-sm md:text-base font-bold text-white tracking-tight line-clamp-1 group-hover:text-blue-300 transition-colors">
+          {item.title}
+        </h3>
+        <p className="text-[9px] xs:text-[10px] sm:text-xs text-neutral-400 font-medium mt-0.5 truncate">
+          {item.clientOrEvent || item.category}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPageProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory.toUpperCase());
@@ -526,31 +630,36 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
 
-  const handleDownload = async (url: string, title: string, e: React.MouseEvent) => {
+  const handleDownload = async (url: string, title: string, e: React.MouseEvent, isVideo = false) => {
     e.stopPropagation();
+    if (downloading) return;
     setDownloading(true);
+    const ext = isVideo ? 'mp4' : 'jpg';
+    const filename = `${title.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'media'}.${ext}`;
     try {
       const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = blobUrl;
-      link.download = `${title.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'photo'}.jpg`;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(blobUrl);
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 10000);
     } catch {
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${title || 'photo'}.jpg`;
+      link.download = filename;
       link.target = '_blank';
       link.rel = 'noopener noreferrer';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+    } finally {
+      setTimeout(() => setDownloading(false), 1500);
     }
-    setTimeout(() => setDownloading(false), 1500);
   };
 
   const handleCategoryClick = (catId: string) => {
@@ -796,46 +905,13 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
                 </div>
               </div>
             ) : (
-              filteredItems.map((item, index) => {
-                return (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, y: 24 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: '-40px' }}
-                    transition={{
-                      duration: 0.5,
-                      delay: (index % 4) * 0.06,
-                      ease: [0.22, 1, 0.36, 1],
-                    }}
-                    onClick={() => setActiveItem(item)}
-                    className="group relative flex flex-col p-1.5 pb-2 sm:p-3 sm:pb-4 rounded-[14px] sm:rounded-[24px] md:rounded-[28px] bg-[#111216]/95 border sm:border-2 border-[#2563EB]/70 hover:border-[#3B82F6] shadow-[0_6px_20px_rgba(0,0,0,0.7),0_0_12px_rgba(37,99,235,0.15)] hover:shadow-[0_16px_40px_rgba(0,0,0,0.9),0_0_30px_rgba(37,99,235,0.35)] transition-all duration-300 active:scale-[0.97] cursor-pointer"
-                  >
-                    {/* Image Container with Rounded Inside */}
-                    <div className="relative w-full aspect-[4/5] rounded-[10px] sm:rounded-[18px] md:rounded-[20px] overflow-hidden bg-neutral-950 border border-neutral-800/60 shadow-inner">
-                      {item.url ? (
-                        <img
-                          src={item.url}
-                          alt={item.title}
-                          loading="lazy"
-                          referrerPolicy="no-referrer"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-                        />
-                      ) : null}
-                    </div>
-
-                    {/* Centered Typography Matching Reference Card */}
-                    <div className="mt-1.5 sm:mt-3 text-center px-0.5 sm:px-1">
-                      <h3 className="text-[11px] xs:text-xs sm:text-sm md:text-base font-bold text-white tracking-tight line-clamp-1 group-hover:text-blue-300 transition-colors">
-                        {item.title}
-                      </h3>
-                      <p className="text-[9px] xs:text-[10px] sm:text-xs text-neutral-400 font-medium mt-0.5 truncate">
-                        {item.clientOrEvent || item.category}
-                      </p>
-                    </div>
-                  </motion.div>
-                );
-              })
+              filteredItems.map((item) => (
+                <GalleryCard
+                  key={item.id}
+                  item={item}
+                  onClick={() => setActiveItem(item)}
+                />
+              ))
             )}
           </motion.div>
         </AnimatePresence>
@@ -894,32 +970,41 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
                 <X className="w-4 h-4" />
               </button>
 
-              {/* Inner Photo Area */}
-              <div className="relative w-full h-[380px] sm:h-[460px] bg-[#181920] border border-white/10 rounded-[24px] overflow-hidden flex items-center justify-center shadow-inner group">
+              {/* Inner Photo / Video Area */}
+              <div className="relative w-full h-[400px] sm:h-[480px] bg-[#181920] border border-white/10 rounded-[24px] overflow-hidden flex items-center justify-center shadow-inner group">
                 {/* Ambient Blurred Fill */}
-                {activeItem.url ? (
-                  <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <img
-                      src={activeItem.url}
-                      alt=""
-                      aria-hidden="true"
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover blur-2xl scale-125 opacity-35 select-none"
-                    />
-                    <div className="absolute inset-0 bg-neutral-950/40" />
-                  </div>
-                ) : null}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                  <img
+                    src={activeItem.url}
+                    alt=""
+                    aria-hidden="true"
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover blur-2xl scale-125 opacity-35 select-none"
+                  />
+                  <div className="absolute inset-0 bg-neutral-950/40" />
+                </div>
 
-                {/* Main Photo Image - Fitted to Height */}
+                {/* Main Photo / Video Media - Fitted to Height */}
                 <div className="relative z-10 w-full h-full flex items-center justify-center p-2 rounded-[20px] overflow-hidden">
-                  {activeItem.url ? (
+                  {activeItem.videoUrl ? (
+                    <video
+                      key={activeItem.videoUrl}
+                      src={activeItem.videoUrl}
+                      poster={activeItem.url}
+                      controls
+                      autoPlay
+                      playsInline
+                      loop
+                      className="h-full w-auto max-w-full object-contain rounded-[18px] select-none block shadow-2xl"
+                    />
+                  ) : (
                     <img
                       src={activeItem.url}
                       alt={activeItem.title}
                       referrerPolicy="no-referrer"
                       className="h-full w-auto max-w-full object-contain rounded-[18px] select-none block shadow-2xl transition-all duration-300"
                     />
-                  ) : null}
+                  )}
                 </div>
 
                 {/* Mobile In-card Left & Right Scroll Arrows */}
@@ -945,31 +1030,38 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
 
                 {/* Download Pill Button */}
                 <button
-                  onClick={(e) => handleDownload(activeItem.url, activeItem.title, e)}
-                  title="Download image"
+                  onClick={(e) => handleDownload(activeItem.videoUrl || activeItem.url, activeItem.title, e, !!activeItem.videoUrl)}
+                  title={activeItem.videoUrl ? 'Download video (MP4)' : 'Download photo (JPG)'}
                   className="absolute bottom-3.5 right-3.5 z-20 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-black/80 hover:bg-white text-neutral-200 hover:text-black border border-white/15 backdrop-blur-md text-xs font-sans font-medium transition-all duration-200 shadow-lg active:scale-95 cursor-pointer group"
                 >
                   {downloading ? (
                     <>
-                      <Check className="w-3.5 h-3.5 text-emerald-400 stroke-[2.5]" />
-                      <span>Saved</span>
+                      <Check className="w-3.5 h-3.5 text-emerald-400 stroke-[2.5] animate-bounce" />
+                      <span>{activeItem.videoUrl ? 'Downloading...' : 'Saving...'}</span>
                     </>
                   ) : (
                     <>
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Download</span>
+                      <Download className="w-3.5 h-3.5 group-hover:translate-y-0.5 transition-transform" />
+                      <span>{activeItem.videoUrl ? 'Download Video' : 'Download'}</span>
                     </>
                   )}
                 </button>
               </div>
 
-              {/* Centered Typography: Title & Subtitle matching photo card */}
+              {/* Centered Typography: Title & Subtitle */}
               <div className="mt-4 px-2 text-center">
+                {activeItem.badge && (
+                  <div className="flex items-center justify-center mb-1.5">
+                    <span className="px-2.5 py-0.5 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400 text-[10px] font-mono font-bold tracking-wider uppercase">
+                      {activeItem.badge}
+                    </span>
+                  </div>
+                )}
                 <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
                   {activeItem.title}
                 </h3>
                 <p className="text-xs sm:text-sm text-neutral-400 font-medium mt-0.5 truncate">
-                  {activeItem.clientOrEvent || activeItem.category}
+                  {activeItem.caption || activeItem.clientOrEvent || activeItem.category}
                 </p>
               </div>
             </motion.div>

@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if the caller is an authenticated administrator
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.token.email == 'muhammedmushfiq178@gmail.com' ||
+        request.auth.token.email == 'admin@mushfii.com' ||
+        request.auth.token.admin == true
+      );
+    }
+
+    // Public visitors can read published photography
+    // Only the administrator can create, modify, or delete
+    match /photos/{photoId} {
+      allow read: if resource.data.published == true || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // Public visitors can read published video reels
+    // Only the administrator can create, modify, or delete
+    match /videos/{videoId} {
+      allow read: if resource.data.published == true || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // Public visitors can read published portfolio projects
+    // Only the administrator can create, modify, or delete
+    match /projects/{projectId} {
+      allow read: if resource.data.published == true || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // Public visitors can read global website content (hero, about, contact, footer)
+    // Only the administrator can update website content
+    match /siteContent/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Public visitors can read global website settings (branding, meta tags)
+    // Only the administrator can update settings
+    match /siteSettings/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Drafts and editing revisions are private to administrators only
+    match /drafts/{draftId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Default deny all other paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
