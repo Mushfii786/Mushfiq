@@ -63,7 +63,7 @@ export function About() {
   ];
 
   return (
-    <section id="about" className="py-24 px-4 sm:px-6 max-w-6xl mx-auto relative select-none">
+    <section id="about" className="py-20 sm:py-24 px-4 sm:px-6 max-w-6xl mx-auto relative select-none w-full overflow-hidden sm:overflow-visible">
       
       {/* Background Subtle Glow */}
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-blue-600/5 dark:bg-blue-500/10 rounded-full blur-[160px] pointer-events-none" />
@@ -82,7 +82,7 @@ export function About() {
       </motion.div>
 
       {/* Bento Grid Container */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+      <div className="w-full grid grid-cols-1 md:grid-cols-12 gap-5 sm:gap-6">
         
         {/* ROW 1: LEFT CARD - Profile Avatar (Col 4) */}
         <motion.div
@@ -90,14 +90,14 @@ export function About() {
           whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="md:col-span-5 lg:col-span-4 bg-neutral-950/85 border border-white/10 rounded-[2.5rem] p-3 flex items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl hover:border-purple-500/40 transition-all duration-500 group relative overflow-hidden"
+          className="w-full col-span-1 md:col-span-5 lg:col-span-4 bg-neutral-950/85 border border-white/10 rounded-[1.75rem] sm:rounded-[2.5rem] p-2.5 sm:p-4 flex items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl hover:border-purple-500/40 transition-all duration-500 group relative overflow-hidden"
         >
           {/* Subtle Ambient Backing Glow */}
           <div className="absolute inset-0 bg-gradient-to-tr from-purple-600/10 via-blue-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
 
-          <div className="w-full aspect-square rounded-[2rem] overflow-hidden bg-neutral-950 relative flex items-center justify-center group/img">
+          <div className="w-full aspect-square rounded-[1.25rem] sm:rounded-[2rem] overflow-hidden bg-neutral-950 relative flex items-center justify-center group/img">
             {/* Image Container with Smooth Motion */}
-            <motion.div className="w-full h-full relative overflow-hidden rounded-[2rem]">
+            <motion.div className="w-full h-full relative overflow-hidden rounded-[1.25rem] sm:rounded-[2rem]">
               {siteConfig.avatarUrl ? (
                 <img
                   src={siteConfig.avatarUrl}
@@ -120,35 +120,35 @@ export function About() {
           whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-          className="md:col-span-7 lg:col-span-8 bg-neutral-950/85 border border-white/10 rounded-[2.5rem] p-6 sm:p-9 flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl hover:border-purple-500/40 transition-all duration-500 group relative overflow-hidden"
+          className="w-full col-span-1 md:col-span-7 lg:col-span-8 bg-neutral-950/85 border border-white/10 rounded-[1.75rem] sm:rounded-[2.5rem] p-4 sm:p-7 md:p-8 lg:p-9 flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl hover:border-purple-500/40 transition-all duration-500 group relative overflow-hidden"
         >
           {/* Subtle Inner Ambient Glow */}
           <div className="absolute -top-24 -right-24 w-72 h-72 bg-gradient-to-br from-purple-600/15 via-blue-600/10 to-transparent rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
 
-          <div className="space-y-4 relative z-10">
+          <div className="space-y-3 sm:space-y-4 relative z-10">
 
 
-            <div className="space-y-2 pt-1">
-              <h3 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight">
+            <div className="space-y-1.5 sm:space-y-2 pt-0.5">
+              <h3 className="text-xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight">
                 {siteConfig.name}
               </h3>
-              <p className="text-xs sm:text-sm font-mono uppercase tracking-widest bg-gradient-to-r from-[#8B5CF6] via-[#3B82F6] to-[#06B6D4] bg-clip-text text-transparent font-bold">
+              <p className="text-[11px] sm:text-sm font-mono uppercase tracking-widest bg-gradient-to-r from-[#8B5CF6] via-[#3B82F6] to-[#06B6D4] bg-clip-text text-transparent font-bold">
                 {siteConfig.title}
               </p>
             </div>
 
-            <div className="text-neutral-300 text-sm sm:text-base font-light leading-relaxed pt-2">
+            <div className="text-neutral-300 text-xs sm:text-base font-light leading-relaxed pt-1">
               <p>{siteConfig.aboutIntro}</p>
             </div>
           </div>
 
-          <div className="pt-6 flex items-center justify-between text-xs text-neutral-400 font-mono relative z-10 border-t border-white/5 mt-4">
-            <span className="flex items-center gap-2">
+          <div className="pt-4 sm:pt-6 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 text-[11px] sm:text-xs text-neutral-400 font-mono relative z-10 border-t border-white/5 mt-3 sm:mt-4">
+            <span className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
               {siteConfig.location}
             </span>
-            <span className="flex items-center gap-2 text-emerald-400 font-medium px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            <span className="flex items-center gap-1.5 text-emerald-400 font-medium px-2 py-0.5 sm:px-3 sm:py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 shrink-0 text-[10px] sm:text-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
               Available for work
             </span>
           </div>
@@ -160,27 +160,27 @@ export function About() {
           whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-          className="md:col-span-6 bg-neutral-950/85 border border-white/10 rounded-[2.5rem] p-6 sm:p-8 flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl hover:border-purple-500/40 transition-all duration-500 group relative overflow-hidden"
+          className="md:col-span-6 bg-neutral-950/85 border border-white/10 rounded-[1.75rem] sm:rounded-[2.5rem] p-4 sm:p-8 flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl hover:border-purple-500/40 transition-all duration-500 group relative overflow-hidden"
         >
           {/* Subtle Ambient Orb */}
           <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-purple-600/10 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
 
           <div className="relative z-10">
-            <div className="flex items-center gap-2 mb-6">
-              <span className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_10px_#8B5CF6]" />
-              <h4 className="text-xs font-mono uppercase tracking-widest text-neutral-300 font-semibold">
+            <div className="flex items-center gap-2 mb-4 sm:mb-6">
+              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-purple-400 shadow-[0_0_10px_#8B5CF6]" />
+              <h4 className="text-[11px] sm:text-xs font-mono uppercase tracking-widest text-neutral-300 font-semibold">
                 EXPERIENCE
               </h4>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-3 sm:space-y-6">
               {experiences.map((exp, idx) => (
-                <div key={idx} className="space-y-1.5 p-3 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-purple-500/30 hover:bg-white/[0.05] transition-all duration-300 group/exp">
+                <div key={idx} className="space-y-1 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-white/[0.02] border border-white/5 hover:border-purple-500/30 hover:bg-white/[0.05] transition-all duration-300 group/exp">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-mono text-purple-300 px-2.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20">{exp.period}</span>
+                    <span className="text-[10px] sm:text-[11px] font-mono text-purple-300 px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20">{exp.period}</span>
                   </div>
-                  <h5 className="text-base font-bold text-white leading-snug group-hover/exp:text-purple-200 transition-colors">{exp.title}</h5>
-                  <p className="text-xs text-neutral-400 font-light">{exp.company}</p>
+                  <h5 className="text-sm sm:text-base font-bold text-white leading-snug group-hover/exp:text-purple-200 transition-colors">{exp.title}</h5>
+                  <p className="text-[11px] sm:text-xs text-neutral-400 font-light">{exp.company}</p>
                 </div>
               ))}
             </div>
@@ -193,28 +193,28 @@ export function About() {
           whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          className="md:col-span-6 bg-neutral-950/85 border border-white/10 rounded-[2.5rem] p-6 sm:p-8 flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl hover:border-purple-500/40 transition-all duration-500 group relative overflow-hidden"
+          className="md:col-span-6 bg-neutral-950/85 border border-white/10 rounded-[1.75rem] sm:rounded-[2.5rem] p-4 sm:p-8 flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl hover:border-purple-500/40 transition-all duration-500 group relative overflow-hidden"
         >
           {/* Subtle Ambient Orb */}
           <div className="absolute -top-20 -right-20 w-60 h-60 bg-blue-600/10 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
 
           <div className="relative z-10">
-            <div className="flex items-center gap-2 mb-6">
-              <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#06B6D4]" />
-              <h4 className="text-xs font-mono uppercase tracking-widest text-neutral-300 font-semibold">
+            <div className="flex items-center gap-2 mb-4 sm:mb-6">
+              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#06B6D4]" />
+              <h4 className="text-[11px] sm:text-xs font-mono uppercase tracking-widest text-neutral-300 font-semibold">
                 EDUCATION
               </h4>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-3 sm:space-y-6">
               {education.map((edu, idx) => (
-                <div key={idx} className="space-y-1.5 p-3 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-cyan-500/30 hover:bg-white/[0.05] transition-all duration-300 group/edu">
+                <div key={idx} className="space-y-1 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-white/[0.02] border border-white/5 hover:border-cyan-500/30 hover:bg-white/[0.05] transition-all duration-300 group/edu">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-mono text-cyan-300 px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20">{edu.period}</span>
+                    <span className="text-[10px] sm:text-[11px] font-mono text-cyan-300 px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20">{edu.period}</span>
                   </div>
-                  <h5 className="text-base font-bold text-white leading-snug group-hover/edu:text-cyan-200 transition-colors">{edu.title}</h5>
-                  <p className="text-xs text-neutral-300 font-light">{edu.company}</p>
-                  {edu.university && <p className="text-xs text-neutral-400 font-light">{edu.university}</p>}
+                  <h5 className="text-sm sm:text-base font-bold text-white leading-snug group-hover/edu:text-cyan-200 transition-colors">{edu.title}</h5>
+                  <p className="text-[11px] sm:text-xs text-neutral-300 font-light">{edu.company}</p>
+                  {edu.university && <p className="text-[10px] sm:text-xs text-neutral-400 font-light">{edu.university}</p>}
                 </div>
               ))}
             </div>
@@ -227,10 +227,10 @@ export function About() {
           whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="md:col-span-5 lg:col-span-4 bg-neutral-950/85 border border-white/10 rounded-[2.5rem] p-6 flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl hover:border-purple-500/40 transition-all duration-500 group relative overflow-hidden min-h-[220px]"
+          className="md:col-span-5 lg:col-span-4 bg-neutral-950/85 border border-white/10 rounded-[1.75rem] sm:rounded-[2.5rem] p-4 sm:p-6 flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl hover:border-purple-500/40 transition-all duration-500 group relative overflow-hidden min-h-[180px] sm:min-h-[220px]"
         >
           {/* Social Icons grid */}
-          <div className="flex flex-wrap items-center gap-2.5 py-1 relative z-10">
+          <div className="flex flex-wrap items-center gap-2 py-1 relative z-10">
             {socialList.map((social) => {
               const IconComp = social.icon;
               return (
@@ -241,22 +241,22 @@ export function About() {
                   rel="noopener noreferrer"
                   whileHover={{ scale: 1.15, y: -2 }}
                   whileTap={{ scale: 0.95 }}
-                  className="w-10 h-10 rounded-full bg-neutral-900 border border-white/10 flex items-center justify-center text-neutral-300 hover:text-white hover:border-purple-500 hover:bg-gradient-to-tr hover:from-purple-600 hover:to-blue-600 hover:shadow-[0_0_20px_rgba(139,92,246,0.4)] transition-all duration-300 shadow-md"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-neutral-900 border border-white/10 flex items-center justify-center text-neutral-300 hover:text-white hover:border-purple-500 hover:bg-gradient-to-tr hover:from-purple-600 hover:to-blue-600 hover:shadow-[0_0_20px_rgba(139,92,246,0.4)] transition-all duration-300 shadow-md"
                   title={social.name}
                 >
-                  <IconComp className="w-4 h-4" />
+                  <IconComp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </motion.a>
               );
             })}
           </div>
 
           {/* Footer Meta */}
-          <div className="flex items-center justify-between pt-6 relative z-10 border-t border-white/5">
+          <div className="flex items-center justify-between pt-4 sm:pt-6 relative z-10 border-t border-white/5">
             <div>
               <span className="text-[10px] font-mono uppercase tracking-widest text-neutral-400 block">
                 STAY WITH ME
               </span>
-              <span className="text-base font-bold text-white">Profiles</span>
+              <span className="text-sm sm:text-base font-bold text-white">Profiles</span>
             </div>
             <motion.a
               href={siteConfig.socials.instagram}
@@ -264,9 +264,9 @@ export function About() {
               rel="noopener noreferrer"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              className="w-9 h-9 rounded-full bg-neutral-900 border border-white/10 flex items-center justify-center text-neutral-400 group-hover:text-white group-hover:bg-[#8B5CF6] group-hover:border-purple-400 group-hover:shadow-[0_0_15px_rgba(139,92,246,0.5)] transition-all duration-300"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-neutral-900 border border-white/10 flex items-center justify-center text-neutral-400 group-hover:text-white group-hover:bg-[#8B5CF6] group-hover:border-purple-400 group-hover:shadow-[0_0_15px_rgba(139,92,246,0.5)] transition-all duration-300"
             >
-              <ArrowUpRight className="w-4 h-4" />
+              <ArrowUpRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </motion.a>
           </div>
         </motion.div>
@@ -277,27 +277,27 @@ export function About() {
           whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          className="md:col-span-7 lg:col-span-8 bg-neutral-950/85 border border-white/10 rounded-[2.5rem] p-6 sm:p-8 flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl hover:border-purple-500/40 transition-all duration-500 group relative overflow-hidden min-h-[220px]"
+          className="md:col-span-7 lg:col-span-8 bg-neutral-950/85 border border-white/10 rounded-[1.75rem] sm:rounded-[2.5rem] p-4 sm:p-8 flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl hover:border-purple-500/40 transition-all duration-500 group relative overflow-hidden min-h-[180px] sm:min-h-[220px]"
         >
           {/* Ambient Purple/Blue Glow */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-gradient-to-r from-purple-600/15 via-blue-600/15 to-cyan-500/10 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
 
           <div className="space-y-1 relative z-10">
-            <Sparkles className="w-5 h-5 text-purple-400 group-hover:rotate-12 group-hover:scale-110 transition-transform duration-300" />
-            <h3 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight leading-tight pt-2">
+            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400 group-hover:rotate-12 group-hover:scale-110 transition-transform duration-300" />
+            <h3 className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight leading-tight pt-1 sm:pt-2">
               Let's <br />
               work <span className="bg-gradient-to-r from-[#8B5CF6] via-[#3B82F6] to-[#06B6D4] bg-clip-text text-transparent font-sans italic">together.</span>
             </h3>
           </div>
 
-          <div className="flex justify-end pt-4 relative z-10">
+          <div className="flex justify-end pt-3 sm:pt-4 relative z-10">
             <motion.a
               href="#contact"
               whileHover={{ scale: 1.1, rotate: 5 }}
               whileTap={{ scale: 0.9 }}
-              className="w-12 h-12 rounded-full bg-neutral-900/90 border border-white/15 text-neutral-300 flex items-center justify-center shadow-md focus:bg-gradient-to-r focus:from-[#8B5CF6] focus:via-[#3B82F6] focus:to-[#06B6D4] focus:text-white focus:border-transparent focus:shadow-[0_0_25px_rgba(139,92,246,0.6)] active:bg-gradient-to-r active:from-[#8B5CF6] active:via-[#3B82F6] active:to-[#06B6D4] active:text-white active:border-transparent active:shadow-[0_0_25px_rgba(139,92,246,0.6)] hover:bg-gradient-to-r hover:from-[#8B5CF6] hover:via-[#3B82F6] hover:to-[#06B6D4] hover:text-white hover:border-transparent hover:shadow-[0_0_25px_rgba(139,92,246,0.6)] transition-all duration-300 outline-none"
+              className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-neutral-900/90 border border-white/15 text-neutral-300 flex items-center justify-center shadow-md focus:bg-gradient-to-r focus:from-[#8B5CF6] focus:via-[#3B82F6] focus:to-[#06B6D4] focus:text-white focus:border-transparent focus:shadow-[0_0_25px_rgba(139,92,246,0.6)] active:bg-gradient-to-r active:from-[#8B5CF6] active:via-[#3B82F6] active:to-[#06B6D4] active:text-white active:border-transparent active:shadow-[0_0_25px_rgba(139,92,246,0.6)] hover:bg-gradient-to-r hover:from-[#8B5CF6] hover:via-[#3B82F6] hover:to-[#06B6D4] hover:text-white hover:border-transparent hover:shadow-[0_0_25px_rgba(139,92,246,0.6)] transition-all duration-300 outline-none"
             >
-              <ArrowUpRight className="w-6 h-6" />
+              <ArrowUpRight className="w-5 h-5 sm:w-6 sm:h-6" />
             </motion.a>
           </div>
         </motion.div>

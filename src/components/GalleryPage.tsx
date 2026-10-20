@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo, useDeferredVa
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, X, Heart, Share2, Sparkles, Layers, Palette, Check, Camera, Download, MapPin, ChevronLeft, ChevronRight, Search, SlidersHorizontal, Video, Play } from 'lucide-react';
 import { videography } from '../config/site';
-import RegeneratedImage from '../assets/images/regenerated_image_1786114032574.png'; 
+import RegeneratedImage from '../assets/images/regenerated_image_1786114032574.webp'; 
 import RegeneratedImage2 from '../assets/images/regenerated_image_1786192879031.jpg'; 
 import FortKochi from '../assets/images/FortKochi.jpg';
 import PostTruthImg from '../assets/images/regenerated_image_1787832022914.jpg';
@@ -31,7 +31,7 @@ import UploadedImg8 from '../assets/images/regenerated_image_1786113837883.jpg';
 import UploadedImg9 from '../assets/images/regenerated_image_1787840681000.jpg';
 import UploadedImg10 from '../assets/images/regenerated_image_1787840682571.jpg';
 import UploadedImg11 from '../assets/images/regenerated_image_1787807484045.jpg';
-import UploadedImg12 from '../assets/images/regenerated_image_1787841584292.png';
+import UploadedImg12 from '../assets/images/regenerated_image_1787841584292.webp';
 import UploadedImg13 from '../assets/images/regenerated_image_1787913915768.jpg';
 import PosterDesign1 from '../assets/images/poster_design_1.jpg';
 import PosterDesign2 from '../assets/images/poster_design_2.jpg';
@@ -52,7 +52,7 @@ interface GalleryPageProps {
 export interface GalleryItem {
   id: string;
   title: string;
-  category: 'Photography' | 'Poster Designing' | 'Photo Editing' | 'Videography';
+  category: 'Photography' | 'Book Cover Design' | 'Photo Editing' | 'Videography';
   url: string;
   videoUrl?: string;
   caption: string;
@@ -67,11 +67,11 @@ export const galleryGridPhotos: GalleryItem[] = [
   // ================= PHOTOGRAPHY & BOOK COVERS =================
   {
     id: "gal-photo-2",
-    title: "Post-truth",
-    category: "Poster Designing",
+    title: "Post-Truth",
+    category: "Book Cover Design",
     url: PostTruthImg,
-    caption: "Book cover design exploring contemporary themes and visual storytelling.",
-    clientOrEvent: "Book cover Design",
+    caption: "Cover Design",
+    clientOrEvent: "Cover Design",
     tools: "Fujifilm X-T5 • 35mm f/2.0",
     year: "2025 Archive",
     badge: "Book Cover"
@@ -79,10 +79,10 @@ export const galleryGridPhotos: GalleryItem[] = [
   {
     id: "gal-photo-1",
     title: "Prophet Ya'qoob",
-    category: "Poster Designing",
+    category: "Book Cover Design",
     url: ProphetYaqoobImg,
-    caption: "Book cover design with atmospheric tones and thematic typography.",
-    clientOrEvent: "Book cover Design",
+    caption: "Cover Design",
+    clientOrEvent: "Cover Design",
     tools: "Sony A7IV • 85mm f/1.4 GM",
     year: "2026 Archive",
     badge: "Book Cover"
@@ -92,8 +92,8 @@ export const galleryGridPhotos: GalleryItem[] = [
     title: "Captured Moments",
     category: "Photography",
     url: RegeneratedImage,
-    caption: "Gothic architecture emerging through dramatic fog and atmospheric lighting.",
-    clientOrEvent: "Frames by Mushfii",
+    caption: "Old Town Square",
+    clientOrEvent: "Old Town Square",
     tools: "Sony A7IV • 35mm f/1.4 GM",
     year: "2025 Archive",
     badge: "Atmospheric"
@@ -103,8 +103,8 @@ export const galleryGridPhotos: GalleryItem[] = [
     title: "The Ship",
     category: "Photography",
     url: FortKochi,
-    caption: "Vessel anchored along the historic coastline of Fort Kochi.",
-    clientOrEvent: "Fort Kochi, Kerala",
+    caption: "Captured in Fort Kochi",
+    clientOrEvent: "Captured in Fort Kochi",
     tools: "Sony A7IV • 24-70mm f/2.8 GM",
     year: "2026 Archive",
     badge: "Fort Kochi"
@@ -114,8 +114,8 @@ export const galleryGridPhotos: GalleryItem[] = [
     title: "Wild Horse",
     category: "Photography",
     url: Horse,
-    caption: "Wild horse grazing in the misty landscapes of Kodaikanal.",
-    clientOrEvent: "Kodaikanal, Tamil Nadu",
+    caption: "Captured in Kodaikanal",
+    clientOrEvent: "Captured in Kodaikanal",
     tools: "Sony A7IV • 70-200mm f/2.8 GM",
     year: "2026 Archive",
     badge: "Wildlife"
@@ -125,8 +125,8 @@ export const galleryGridPhotos: GalleryItem[] = [
     title: "Wheel of Lights",
     category: "Photography",
     url: Night,
-    caption: "Night perspectives and festival lights in Kozhikode.",
-    clientOrEvent: "Kozhikode, Kerala",
+    caption: "Captured in Kozhikode",
+    clientOrEvent: "Captured in Kozhikode",
     tools: "Sony A7IV • 50mm f/1.2 GM",
     year: "2026 Archive",
     badge: "Night Lights"
@@ -136,8 +136,8 @@ export const galleryGridPhotos: GalleryItem[] = [
     title: "Dog",
     category: "Photography",
     url: Dog,
-    caption: "Intimate candid portrait capturing golden sunlight and gentle spirit.",
-    clientOrEvent: "Kerala, India",
+    caption: "Captured in Kodaikanal",
+    clientOrEvent: "Captured in Kodaikanal",
     tools: "Sony A7IV • 85mm f/1.4 GM",
     year: "2026 Archive",
     badge: "Candid"
@@ -147,8 +147,8 @@ export const galleryGridPhotos: GalleryItem[] = [
     title: "Jew Town",
     category: "Photography",
     url: RegeneratedImage6,
-    caption: "Atmospheric perspectives and heritage alleys in Fort Kochi.",
-    clientOrEvent: "Fort Kochi, Kerala",
+    caption: "Captured in Fort Kochi",
+    clientOrEvent: "Captured in Fort Kochi",
     tools: "Fujifilm X-T5 • 50-140mm",
     year: "2026 Archive",
     badge: "Jew Town"
@@ -237,10 +237,10 @@ export const galleryGridPhotos: GalleryItem[] = [
   {
     id: "gal-poster-2",
     title: "Meelad-Un-Nabi",
-    category: "Poster Designing",
+    category: "Book Cover Design",
     url: AbstractGeometricImg,
-    caption: "Poster Design",
-    clientOrEvent: "Poster Design",
+    caption: "Book Cover Design",
+    clientOrEvent: "Book Cover Design",
     tools: "Illustrator • InDesign",
     year: "2026",
     badge: "Poster"
@@ -248,10 +248,10 @@ export const galleryGridPhotos: GalleryItem[] = [
   {
     id: "gal-poster-3",
     title: "Eid al-Adha",
-    category: "Poster Designing",
+    category: "Book Cover Design",
     url: UploadedImg1,
-    caption: "Poster Design",
-    clientOrEvent: "Poster Design",
+    caption: "Book Cover Design",
+    clientOrEvent: "Book Cover Design",
     tools: "Illustrator • Photoshop",
     year: "2026",
     badge: "Poster"
@@ -259,10 +259,10 @@ export const galleryGridPhotos: GalleryItem[] = [
   {
     id: "gal-poster-4",
     title: "Wedding invitation Poster",
-    category: "Poster Designing",
+    category: "Book Cover Design",
     url: UploadedImg2,
-    caption: "Poster Design",
-    clientOrEvent: "Poster Design",
+    caption: "Book Cover Design",
+    clientOrEvent: "Book Cover Design",
     tools: "InDesign • Illustrator",
     year: "2026",
     badge: "Poster"
@@ -270,10 +270,10 @@ export const galleryGridPhotos: GalleryItem[] = [
   {
     id: "gal-poster-5",
     title: "Welcome Baby",
-    category: "Poster Designing",
+    category: "Book Cover Design",
     url: UploadedImg3,
-    caption: "Poster Design",
-    clientOrEvent: "Poster Design",
+    caption: "Book Cover Design",
+    clientOrEvent: "Book Cover Design",
     tools: "Photoshop • Lightroom",
     year: "2025",
     badge: "Poster"
@@ -281,10 +281,10 @@ export const galleryGridPhotos: GalleryItem[] = [
   {
     id: "gal-poster-6",
     title: "Moulid Majlis",
-    category: "Poster Designing",
+    category: "Book Cover Design",
     url: UploadedImg4,
-    caption: "Poster Design",
-    clientOrEvent: "Poster Design",
+    caption: "Book Cover Design",
+    clientOrEvent: "Book Cover Design",
     tools: "Illustrator • Figma",
     year: "2026",
     badge: "Poster"
@@ -294,10 +294,10 @@ export const galleryGridPhotos: GalleryItem[] = [
   {
     id: "gal-photo-new-1",
     title: "Majlisunnoor",
-    category: "Poster Designing",
+    category: "Book Cover Design",
     url: House,
-    caption: "Poster Design",
-    clientOrEvent: "Poster Design",
+    caption: "Book Cover Design",
+    clientOrEvent: "Book Cover Design",
     tools: "Sony A7IV • 24mm f/1.4 GM",
     year: "2026 Archive",
     badge: "Poster"
@@ -305,10 +305,10 @@ export const galleryGridPhotos: GalleryItem[] = [
   {
     id: "gal-photo-new-2",
     title: "Kerala Day Program",
-    category: "Poster Designing",
+    category: "Book Cover Design",
     url: UploadedImg5,
-    caption: "Poster Design",
-    clientOrEvent: "Poster Design",
+    caption: "Book Cover Design",
+    clientOrEvent: "Book Cover Design",
     tools: "Fujifilm X-T5 • 35mm f/1.4",
     year: "2026 Archive",
     badge: "Poster"
@@ -316,10 +316,10 @@ export const galleryGridPhotos: GalleryItem[] = [
   {
     id: "gal-photo-new-3",
     title: "Pista Water Poster",
-    category: "Poster Designing",
+    category: "Book Cover Design",
     url: UploadedImg6,
-    caption: "Poster Design",
-    clientOrEvent: "Poster Design",
+    caption: "Book Cover Design",
+    clientOrEvent: "Book Cover Design",
     tools: "Sony A7IV • 85mm f/1.8",
     year: "2026 Archive",
     badge: "Poster"
@@ -327,10 +327,10 @@ export const galleryGridPhotos: GalleryItem[] = [
   {
     id: "gal-photo-new-4",
     title: "Voice of Campus",
-    category: "Poster Designing",
+    category: "Book Cover Design",
     url: UploadedImg7,
-    caption: "Poster Design",
-    clientOrEvent: "Poster Design",
+    caption: "Book Cover Design",
+    clientOrEvent: "Book Cover Design",
     tools: "Sony A7IV • 50mm f/1.4",
     year: "2025 Archive",
     badge: "Poster"
@@ -338,10 +338,10 @@ export const galleryGridPhotos: GalleryItem[] = [
   {
     id: "gal-edit-new-1",
     title: "Watermelon Poster",
-    category: "Poster Designing",
+    category: "Book Cover Design",
     url: UploadedImg8,
-    caption: "Poster Design",
-    clientOrEvent: "Poster Design",
+    caption: "Book Cover Design",
+    clientOrEvent: "Book Cover Design",
     tools: "Lightroom Classic • Photoshop",
     year: "2026",
     badge: "Poster"
@@ -349,10 +349,10 @@ export const galleryGridPhotos: GalleryItem[] = [
   {
     id: "gal-edit-new-2",
     title: "Painting Competition Poster",
-    category: "Poster Designing",
+    category: "Book Cover Design",
     url: UploadedImg9,
-    caption: "Poster Design",
-    clientOrEvent: "Poster Design",
+    caption: "Book Cover Design",
+    clientOrEvent: "Book Cover Design",
     tools: "Lightroom Classic",
     year: "2026",
     badge: "Poster"
@@ -360,10 +360,10 @@ export const galleryGridPhotos: GalleryItem[] = [
   {
     id: "gal-poster-new-7",
     title: "Collage Program",
-    category: "Poster Designing",
+    category: "Book Cover Design",
     url: UploadedImg10,
-    caption: "Poster Design",
-    clientOrEvent: "Poster Design",
+    caption: "Book Cover Design",
+    clientOrEvent: "Book Cover Design",
     tools: "InDesign • Illustrator",
     year: "2026",
     badge: "Poster"
@@ -371,10 +371,10 @@ export const galleryGridPhotos: GalleryItem[] = [
   {
     id: "gal-photo-new-5",
     title: "Program Hunt",
-    category: "Poster Designing",
+    category: "Book Cover Design",
     url: UploadedImg11,
-    caption: "Poster Design",
-    clientOrEvent: "Poster Design",
+    caption: "Book Cover Design",
+    clientOrEvent: "Book Cover Design",
     tools: "Sony A7IV • 70-200mm f/2.8 GM",
     year: "2026 Archive",
     badge: "Poster"
@@ -404,10 +404,10 @@ export const galleryGridPhotos: GalleryItem[] = [
   {
     id: "gal-poster-new-8",
     title: "Meelad Program",
-    category: "Poster Designing",
+    category: "Book Cover Design",
     url: PosterDesign1,
-    caption: "Poster Design",
-    clientOrEvent: "Poster Design",
+    caption: "Book Cover Design",
+    clientOrEvent: "Book Cover Design",
     tools: "Illustrator • Photoshop",
     year: "2026",
     badge: "Poster"
@@ -415,10 +415,10 @@ export const galleryGridPhotos: GalleryItem[] = [
   {
     id: "gal-poster-new-9",
     title: "Meelad Fest 26",
-    category: "Poster Designing",
+    category: "Book Cover Design",
     url: PosterDesign2,
-    caption: "Poster Design",
-    clientOrEvent: "Poster Design",
+    caption: "Book Cover Design",
+    clientOrEvent: "Book Cover Design",
     tools: "Photoshop • InDesign",
     year: "2026",
     badge: "Poster"
@@ -426,10 +426,10 @@ export const galleryGridPhotos: GalleryItem[] = [
   {
     id: "gal-poster-new-10",
     title: "Wedding Wishes",
-    category: "Poster Designing",
+    category: "Book Cover Design",
     url: PosterDesign3,
-    caption: "Poster Design",
-    clientOrEvent: "Poster Design",
+    caption: "Book Cover Design",
+    clientOrEvent: "Book Cover Design",
     tools: "Illustrator • Figma",
     year: "2026",
     badge: "Poster"
@@ -437,10 +437,10 @@ export const galleryGridPhotos: GalleryItem[] = [
   {
     id: "gal-poster-new-11",
     title: "Family Onam",
-    category: "Poster Designing",
+    category: "Book Cover Design",
     url: PosterDesign4,
-    caption: "Poster Design",
-    clientOrEvent: "Poster Design",
+    caption: "Book Cover Design",
+    clientOrEvent: "Book Cover Design",
     tools: "Illustrator • Photoshop",
     year: "2026",
     badge: "Poster"
@@ -448,10 +448,10 @@ export const galleryGridPhotos: GalleryItem[] = [
   {
     id: "gal-poster-new-12",
     title: "Family Onam",
-    category: "Poster Designing",
+    category: "Book Cover Design",
     url: PosterDesign5,
-    caption: "Poster Design",
-    clientOrEvent: "Poster Design",
+    caption: "Book Cover Design",
+    clientOrEvent: "Book Cover Design",
     tools: "InDesign • Photoshop",
     year: "2026",
     badge: "Poster"
@@ -459,10 +459,10 @@ export const galleryGridPhotos: GalleryItem[] = [
   {
     id: "gal-poster-new-13",
     title: "Family Onam",
-    category: "Poster Designing",
+    category: "Book Cover Design",
     url: PosterDesign6,
-    caption: "Poster Design",
-    clientOrEvent: "Poster Design",
+    caption: "Book Cover Design",
+    clientOrEvent: "Book Cover Design",
     tools: "Illustrator • Lightroom",
     year: "2026",
     badge: "Poster"
@@ -470,10 +470,10 @@ export const galleryGridPhotos: GalleryItem[] = [
   {
     id: "gal-poster-new-14",
     title: "Mandhi Poster",
-    category: "Poster Designing",
+    category: "Book Cover Design",
     url: PosterDesign7,
-    caption: "Poster Design",
-    clientOrEvent: "Poster Design",
+    caption: "Book Cover Design",
+    clientOrEvent: "Book Cover Design",
     tools: "Photoshop • Illustrator",
     year: "2026",
     badge: "Poster"
@@ -481,10 +481,10 @@ export const galleryGridPhotos: GalleryItem[] = [
   {
     id: "gal-poster-new-15",
     title: "Gandhi Jayanthi Poster",
-    category: "Poster Designing",
+    category: "Book Cover Design",
     url: PosterDesign8,
-    caption: "Poster Design",
-    clientOrEvent: "Poster Design",
+    caption: "Book Cover Design",
+    clientOrEvent: "Book Cover Design",
     tools: "Illustrator • Photoshop",
     year: "2026",
     badge: "Poster"
@@ -492,10 +492,10 @@ export const galleryGridPhotos: GalleryItem[] = [
   {
     id: "gal-poster-new-16",
     title: "Avil Milk Poster",
-    category: "Poster Designing",
+    category: "Book Cover Design",
     url: PosterDesign9,
-    caption: "Poster Design",
-    clientOrEvent: "Poster Design",
+    caption: "Book Cover Design",
+    clientOrEvent: "Book Cover Design",
     tools: "Photoshop • InDesign",
     year: "2026",
     badge: "Poster"
@@ -503,10 +503,54 @@ export const galleryGridPhotos: GalleryItem[] = [
   {
     id: "gal-poster-new-17",
     title: "Sabaq-Ul-Sibaq",
-    category: "Poster Designing",
+    category: "Book Cover Design",
     url: PosterDesign10,
-    caption: "Poster Design",
-    clientOrEvent: "Poster Design",
+    caption: "Book Cover Design",
+    clientOrEvent: "Book Cover Design",
+    tools: "Illustrator • Photoshop",
+    year: "2026",
+    badge: "Poster"
+  },
+  {
+    id: "gal-poster-workshop-1",
+    title: "Arabic Literature Workshop",
+    category: "Book Cover Design",
+    url: "/images/arabic-literature.jpg",
+    caption: "Poster Designing",
+    clientOrEvent: "Poster Designing",
+    tools: "Illustrator • Photoshop",
+    year: "2026",
+    badge: "Poster"
+  },
+  {
+    id: "gal-poster-workshop-2",
+    title: "Urdu Literature Workshop",
+    category: "Book Cover Design",
+    url: "/images/urdu-literature.jpg",
+    caption: "Poster Designing",
+    clientOrEvent: "Poster Designing",
+    tools: "Illustrator • Photoshop",
+    year: "2026",
+    badge: "Poster"
+  },
+  {
+    id: "gal-poster-workshop-3",
+    title: "Leadership Workshop",
+    category: "Book Cover Design",
+    url: "/images/leadership-workshop.jpg",
+    caption: "Poster Designing",
+    clientOrEvent: "Poster Designing",
+    tools: "Illustrator • Photoshop",
+    year: "2026",
+    badge: "Poster"
+  },
+  {
+    id: "gal-poster-workshop-4",
+    title: "Multilingual Workshop",
+    category: "Book Cover Design",
+    url: "/images/multilingual-workshop.jpg",
+    caption: "Poster Designing",
+    clientOrEvent: "Poster Designing",
     tools: "Illustrator • Photoshop",
     year: "2026",
     badge: "Poster"
@@ -529,7 +573,7 @@ export const galleryGridPhotos: GalleryItem[] = [
 const categories = [
   { id: 'ALL', label: 'All Works', icon: Sparkles },
   { id: 'PHOTOGRAPHY', label: 'Photography', icon: Camera },
-  { id: 'POSTER DESIGNING', label: 'Poster Designing', icon: Layers },
+  { id: 'BOOK COVER DESIGN', label: 'Poster Designs', icon: Layers },
   { id: 'VIDEOGRAPHY', label: 'Videography', icon: Video },
 ];
 
@@ -613,8 +657,8 @@ function GalleryCard({ item, onClick }: GalleryCardProps) {
         <h3 className="text-[11px] xs:text-xs sm:text-sm md:text-base font-bold text-white tracking-tight line-clamp-1 group-hover:text-blue-300 transition-colors">
           {item.title}
         </h3>
-        <p className="text-[9px] xs:text-[10px] sm:text-xs text-neutral-400 font-medium mt-0.5 truncate">
-          {item.clientOrEvent || item.category}
+        <p className="text-[9px] xs:text-[10px] sm:text-xs text-neutral-400 font-medium mt-0.5 line-clamp-2">
+          {item.caption || item.clientOrEvent || item.category}
         </p>
       </div>
     </div>
@@ -776,61 +820,61 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
       </div>
 
       {/* Top Header Navigation */}
-      <header className="sticky top-0 z-40 bg-[#090A0F]/90 backdrop-blur-2xl border-b border-white/[0.08] px-3.5 sm:px-6 lg:px-8 py-2.5 sm:py-3.5 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3.5 shadow-[0_10px_35px_rgba(0,0,0,0.85)] relative">
+      <header className="sticky top-0 z-40 bg-[#090A0F]/95 backdrop-blur-2xl border-b border-white/[0.08] px-2.5 sm:px-4 lg:px-8 py-2 sm:py-3 flex flex-col lg:flex-row lg:items-center justify-between gap-2 sm:gap-3 shadow-[0_10px_35px_rgba(0,0,0,0.85)] relative">
         {/* Subtle Top Ambient Gradient Highlight */}
         <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#2563EB]/40 via-purple-500/30 to-transparent pointer-events-none" />
         
         {/* Left: Brand / Return to Portfolio */}
-        <div className="flex items-center justify-between lg:justify-start gap-2.5 sm:gap-4">
+        <div className="flex items-center justify-between lg:justify-start gap-2">
           <button
             onClick={onClose}
-            className="group relative px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/[0.05] hover:bg-[#2563EB] text-white border border-white/10 hover:border-blue-400/40 text-xs font-semibold tracking-normal transition-all duration-300 flex items-center gap-1.5 sm:gap-2 cursor-pointer shadow-[0_2px_10px_rgba(0,0,0,0.3)] hover:shadow-[0_0_20px_rgba(37,99,235,0.45)] hover:scale-105 active:scale-95 overflow-hidden shrink-0"
+            className="group relative px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-white/[0.05] hover:bg-[#2563EB] text-white border border-white/10 hover:border-blue-400/40 text-[11px] sm:text-xs font-semibold tracking-normal transition-all duration-300 flex items-center gap-1.5 cursor-pointer shadow-[0_2px_10px_rgba(0,0,0,0.3)] hover:shadow-[0_0_20px_rgba(37,99,235,0.45)] hover:scale-105 active:scale-95 overflow-hidden shrink-0"
           >
-            <ArrowLeft className="w-3.5 h-3.5 transition-transform duration-300 group-hover:-translate-x-1 text-blue-400 group-hover:text-white" />
+            <ArrowLeft className="w-3 h-3 transition-transform duration-300 group-hover:-translate-x-1 text-blue-400 group-hover:text-white" />
             <span className="font-medium tracking-wide">Back</span>
             <span className="hidden sm:inline font-medium tracking-wide">to Portfolio</span>
           </button>
 
-          <div className="hidden sm:block h-4 w-[1px] bg-white/15" />
+          <div className="hidden sm:block h-3.5 w-[1px] bg-white/15" />
 
-          <div className="flex items-center gap-2 sm:gap-2.5 overflow-hidden">
-            <span className="text-xs sm:text-base font-bold text-white tracking-tight bg-gradient-to-r from-white via-neutral-100 to-neutral-300 bg-clip-text truncate">
-              Photography & Design
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-hidden">
+            <span className="text-[11px] sm:text-sm font-bold text-white tracking-tight bg-gradient-to-r from-white via-neutral-100 to-neutral-300 bg-clip-text truncate">
+              Photography & Videography
             </span>
-            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 rounded-full text-[9px] sm:text-[11px] font-mono font-bold tracking-wider text-blue-400 bg-blue-500/10 border border-blue-500/25 shadow-[0_0_12px_rgba(37,99,235,0.18)] shrink-0">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-mono font-bold tracking-wider text-blue-400 bg-blue-500/10 border border-blue-500/25 shadow-[0_0_12px_rgba(37,99,235,0.18)] shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
               {filteredItems.length} {filteredItems.length === 1 ? 'WORK' : 'WORKS'}
             </span>
           </div>
         </div>
 
-        {/* Center: Premium Standard Search Bar */}
-        <div className="w-full lg:max-w-md xl:max-w-lg relative">
+        {/* Center: Compact Professional Search Bar */}
+        <div className="w-full lg:max-w-xs xl:max-w-sm relative">
           <div className="relative flex items-center w-full group">
-            <div className="absolute left-3.5 pointer-events-none flex items-center justify-center text-neutral-400 group-focus-within:text-blue-400 transition-colors duration-200">
-              <Search className="w-4 h-4" />
+            <div className="absolute left-3 pointer-events-none flex items-center justify-center text-neutral-400 group-focus-within:text-blue-400 transition-colors duration-200">
+              <Search className="w-3.5 h-3.5" />
             </div>
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by title, location, tools, or tags..."
-              className="w-full pl-10 pr-9 sm:pr-10 py-2 sm:py-2.5 rounded-full bg-neutral-900/90 hover:bg-neutral-900 focus:bg-neutral-950 text-xs sm:text-sm text-white placeholder-neutral-500 border border-neutral-800 hover:border-neutral-700 focus:border-blue-500/70 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-[0_2px_8px_rgba(0,0,0,0.5),inset_0_1px_2px_rgba(0,0,0,0.4)] transition-all duration-200"
+              placeholder="Search works..."
+              className="w-full pl-9 pr-8 py-1.5 sm:py-2 rounded-full bg-neutral-900/90 hover:bg-neutral-900 focus:bg-neutral-950 text-[11px] sm:text-xs text-white placeholder-neutral-500 border border-neutral-800 hover:border-neutral-700 focus:border-blue-500/70 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-[0_2px_8px_rgba(0,0,0,0.5),inset_0_1px_2px_rgba(0,0,0,0.4)] transition-all duration-200"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
                 aria-label="Clear search"
-                className="absolute right-3 p-1 rounded-full text-neutral-400 hover:text-white hover:bg-white/10 transition-all duration-150 cursor-pointer"
+                className="absolute right-2.5 p-1 rounded-full text-neutral-400 hover:text-white hover:bg-white/10 transition-all duration-150 cursor-pointer"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-3 h-3" />
               </button>
             )}
           </div>
         </div>
 
-        {/* Right / Category Filter Pills */}
-        <div className="flex items-center gap-1 sm:gap-1.5 p-1 rounded-full bg-neutral-950/80 border border-neutral-800 backdrop-blur-xl overflow-x-auto touch-pan-x pb-1 lg:pb-1 no-scrollbar shadow-inner -mx-1 px-1 sm:mx-0 sm:px-1">
+        {/* Right / Compact Category Filter Pills */}
+        <div className="flex items-center gap-1 p-0.5 sm:p-1 rounded-full bg-neutral-950/80 border border-neutral-800 backdrop-blur-xl overflow-x-auto touch-pan-x pb-1 lg:pb-0 no-scrollbar shadow-inner -mx-1 px-1 sm:mx-0 sm:px-1">
           {categories.map((cat) => {
             const Icon = cat.icon;
             const isSelected = selectedCategory === cat.id;
@@ -839,7 +883,7 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
               <button
                 key={cat.id}
                 onClick={() => handleCategoryClick(cat.id)}
-                className={`relative px-3 sm:px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer whitespace-nowrap flex items-center gap-1.5 z-10 select-none shrink-0 ${
+                className={`relative px-2.5 sm:px-3.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold transition-all duration-200 cursor-pointer whitespace-nowrap flex items-center gap-1 z-10 select-none shrink-0 ${
                   isSelected
                     ? 'text-white'
                     : 'text-neutral-400 hover:text-neutral-200 hover:bg-white/[0.04]'
@@ -848,11 +892,11 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
                 {isSelected && (
                   <motion.div
                     layoutId="activeCategoryPill"
-                    className="absolute inset-0 rounded-full bg-[#2563EB] shadow-[0_0_20px_rgba(37,99,235,0.45)] border border-blue-400/30 -z-10"
+                    className="absolute inset-0 rounded-full bg-[#2563EB] shadow-[0_0_15px_rgba(37,99,235,0.45)] border border-blue-400/30 -z-10"
                     transition={{ type: 'spring', stiffness: 450, damping: 32 }}
                   />
                 )}
-                <Icon className={`w-3.5 h-3.5 transition-colors duration-200 ${isSelected ? 'text-white drop-shadow-[0_0_6px_rgba(255,255,255,0.4)]' : 'text-neutral-400'}`} />
+                <Icon className={`w-3 h-3 transition-colors duration-200 ${isSelected ? 'text-white drop-shadow-[0_0_6px_rgba(255,255,255,0.4)]' : 'text-neutral-400'}`} />
                 <span>{cat.label}</span>
               </button>
             );
@@ -869,7 +913,7 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4 md:gap-6 items-stretch"
+            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4 md:gap-6 items-stretch"
           >
             {filteredItems.length === 0 ? (
               <div className="col-span-full py-16 sm:py-24 flex flex-col items-center justify-center text-center px-4">
@@ -1050,13 +1094,6 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
 
               {/* Centered Typography: Title & Subtitle */}
               <div className="mt-4 px-2 text-center">
-                {activeItem.badge && (
-                  <div className="flex items-center justify-center mb-1.5">
-                    <span className="px-2.5 py-0.5 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400 text-[10px] font-mono font-bold tracking-wider uppercase">
-                      {activeItem.badge}
-                    </span>
-                  </div>
-                )}
                 <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
                   {activeItem.title}
                 </h3>

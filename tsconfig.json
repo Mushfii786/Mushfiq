@@ -23,5 +23,16 @@
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "noEmit": true
-  }
+  },
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "node_modules",
+    "src/admin",
+    "src/services",
+    "src/context",
+    "src/components/AddGoogleDriveVideoModal.tsx",
+    "src/components/AdminAuthModal.tsx"
+  ]
 }

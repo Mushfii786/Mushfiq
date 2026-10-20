@@ -29,6 +29,7 @@ export interface Photo {
   lens?: string;
   settings?: string;
   year: string;
+  published?: boolean;
 }
 
 export interface VideoItem {
@@ -122,4 +123,6 @@ export interface SiteConfig {
     value: string;
     suffix?: string;
   }[];
+  hero?: any;
+  footer?: any;
 }

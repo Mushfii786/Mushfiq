@@ -74,29 +74,29 @@ export function Hero() {
         </motion.div>
 
         {/* Main Headline */}
-        <div className="space-y-1 sm:space-y-2">
+        <div className="space-y-0.5 sm:space-y-1.5">
           <motion.div variants={lineVariants} className="overflow-hidden">
-            <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-[3.6rem] xl:text-[4.2rem] font-extrabold tracking-tight text-white leading-[1.08] drop-shadow-[0_10px_30px_rgba(0,0,0,0.9)]">
+            <h1 className="text-xl xs:text-2xl sm:text-4xl md:text-5xl lg:text-[3.6rem] xl:text-[4.2rem] font-extrabold tracking-tight text-white leading-[1.1] drop-shadow-[0_10px_30px_rgba(0,0,0,0.9)]">
               {siteContent?.hero?.headingPart1 || "Crafting Unforgettable"}
             </h1>
           </motion.div>
 
           <motion.div variants={lineVariants} className="overflow-hidden">
-            <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-[3.6rem] xl:text-[4.2rem] font-extrabold tracking-tight text-white leading-[1.08] drop-shadow-[0_10px_30px_rgba(0,0,0,0.9)]">
+            <h1 className="text-xl xs:text-2xl sm:text-4xl md:text-5xl lg:text-[3.6rem] xl:text-[4.2rem] font-extrabold tracking-tight text-white leading-[1.1] drop-shadow-[0_10px_30px_rgba(0,0,0,0.9)]">
               {siteContent?.hero?.headingPart2 || "Visuals Through"}
             </h1>
           </motion.div>
 
-          <motion.div variants={lineVariants} className="overflow-hidden py-1">
-            <h1 className="text-xl sm:text-3xl md:text-4xl lg:text-[3.1rem] xl:text-[3.6rem] font-extrabold tracking-tight leading-[1.08] drop-shadow-[0_0_35px_rgba(139,92,246,0.4)]">
+          <motion.div variants={lineVariants} className="overflow-hidden py-0.5 sm:py-1">
+            <h1 className="text-base xs:text-lg sm:text-3xl md:text-4xl lg:text-[3.1rem] xl:text-[3.6rem] font-extrabold tracking-tight leading-[1.12] drop-shadow-[0_0_35px_rgba(139,92,246,0.4)]">
               <GradientText>{siteContent?.hero?.gradientHeading || "Photography, Videography & Editing"}</GradientText>
             </h1>
           </motion.div>
         </div>
 
         {/* Subtitle Introduction */}
-        <motion.div variants={lineVariants} className="max-w-[680px] mx-auto px-2">
-          <p className="text-sm sm:text-base md:text-lg text-white/70 font-light leading-relaxed tracking-wide font-sans">
+        <motion.div variants={lineVariants} className="max-w-[540px] sm:max-w-[680px] mx-auto px-3 sm:px-2">
+          <p className="text-xs sm:text-base md:text-lg text-white/70 font-light leading-relaxed tracking-wide font-sans">
             {siteContent?.hero?.intro || (
               <>Hi, I'm <strong className="font-semibold text-white">Mushfiq</strong>. I transform ideas into cinematic visuals through video editing, photography, videography, photo editing, and creative design.</>
             )}

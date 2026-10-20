@@ -203,14 +203,16 @@ export function CoverFlowGallery({
                   )}
                 </div>
 
-                {/* Text Content below image */}
-                <div className="mt-3.5 px-1 text-center">
-                  <h3 className="text-base sm:text-lg font-bold text-white tracking-tight truncate group-hover:text-[#2563EB] transition-colors">
+                {/* Text Content below image: Title and Location/Category */}
+                <div className="mt-3.5 px-1 text-center flex flex-col items-center">
+                  <h3 className="text-base sm:text-lg font-bold text-white tracking-tight truncate group-hover:text-[#2563EB] transition-colors max-w-full">
                     {item.title}
                   </h3>
-                  <p className="text-xs font-medium text-neutral-400 truncate mt-0.5">
-                    {item.subtitle}
-                  </p>
+                  {(item.data?.location || item.subtitle || item.category) && (
+                    <p className="text-xs font-medium text-neutral-400 truncate mt-0.5">
+                      {item.data?.location || item.subtitle || item.category}
+                    </p>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -221,18 +223,18 @@ export function CoverFlowGallery({
       {/* Navigation Chevrons */}
       <button
         onClick={prevSlide}
-        className="absolute left-3 sm:left-8 top-1/2 -translate-y-1/2 z-50 w-12 h-12 rounded-full bg-neutral-900/80 hover:bg-[#2563EB] border border-white/15 text-white flex items-center justify-center backdrop-blur-xl shadow-2xl hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer"
+        className="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 z-50 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-neutral-900/85 hover:bg-[#2563EB] border border-white/15 text-white flex items-center justify-center backdrop-blur-xl shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
         aria-label="Previous image"
       >
-        <ChevronLeft className="w-6 h-6" />
+        <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
       </button>
 
       <button
         onClick={nextSlide}
-        className="absolute right-3 sm:right-8 top-1/2 -translate-y-1/2 z-50 w-12 h-12 rounded-full bg-neutral-900/80 hover:bg-[#2563EB] border border-white/15 text-white flex items-center justify-center backdrop-blur-xl shadow-2xl hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer"
+        className="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 z-50 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-neutral-900/85 hover:bg-[#2563EB] border border-white/15 text-white flex items-center justify-center backdrop-blur-xl shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
         aria-label="Next image"
       >
-        <ChevronRight className="w-6 h-6" />
+        <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
       </button>
 
       {/* Dot Indicators */}
