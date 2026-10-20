@@ -27,46 +27,47 @@ function WhatsappIcon({ className }: { className?: string }) {
   );
 }
 
-export function About() {
-  const socialList = [
-    { name: 'Instagram', url: siteConfig.socials.instagram, icon: Instagram },
-    { name: 'WhatsApp', url: siteConfig.socials.whatsapp, icon: WhatsappIcon },
-    { name: 'LinkedIn', url: siteConfig.socials.linkedin, icon: Linkedin },
-    { name: 'GitHub', url: siteConfig.socials.github, icon: Github },
-    { name: 'Pinterest', url: siteConfig.socials.pinterest, icon: PinterestIcon },
-  ];
-  const experiences = [
-    {
-      period: "2024 – Present",
-      title: "Videographer & Visual Designer",
-      company: "Freelance"
-    },
-    {
-      period: "2024 – Present",
-      title: "Digital Poster Designer",
-      company: "College Media & Student Organizations"
-    },
-    {
-      period: "2024 – Present",
-      title: "Creative Video Editor",
-      company: "Freelance"
-    }
-  ];
+const socialList = [
+  { name: 'Instagram', url: siteConfig.socials.instagram, icon: Instagram },
+  { name: 'WhatsApp', url: siteConfig.socials.whatsapp, icon: WhatsappIcon },
+  { name: 'LinkedIn', url: siteConfig.socials.linkedin, icon: Linkedin },
+  { name: 'GitHub', url: siteConfig.socials.github, icon: Github },
+  { name: 'Pinterest', url: siteConfig.socials.pinterest, icon: PinterestIcon },
+];
 
-  const education = [
-    {
-      period: "2019 – Present",
-      title: "Hudawi Course (Islamic Studies)",
-      company: "Al Hidaya Islamic Academy, Kalamassery, Ernakulam",
-      university: "Affiliated with Darul Huda Islamic University, Chemmad"
-    }
-  ];
+const experiences = [
+  {
+    period: "2024 – Present",
+    title: "Videographer & Visual Designer",
+    company: "Freelance"
+  },
+  {
+    period: "2024 – Present",
+    title: "Digital Poster Designer",
+    company: "College Media & Student Organizations"
+  },
+  {
+    period: "2024 – Present",
+    title: "Creative Video Editor",
+    company: "Freelance"
+  }
+];
 
+const education = [
+  {
+    period: "2019 – Present",
+    title: "Hudawi Course (Islamic Studies)",
+    company: "Al Hidaya Islamic Academy, Kalamassery, Ernakulam",
+    university: "Affiliated with Darul Huda Islamic University, Chemmad"
+  }
+];
+
+export const About = React.memo(function About() {
   return (
     <section id="about" className="py-20 sm:py-24 px-4 sm:px-6 max-w-6xl mx-auto relative select-none w-full overflow-hidden sm:overflow-visible">
       
-      {/* Background Subtle Glow */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-blue-600/5 dark:bg-blue-500/10 rounded-full blur-[160px] pointer-events-none" />
+      {/* Background Subtle Glow (Pure GPU Radial Gradient instead of 160px CSS blur filter) */}
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-[radial-gradient(ellipse_at_center,rgba(59,130,246,0.10)_0%,transparent_70%)] pointer-events-none transform-gpu" />
 
       {/* Top Header Title */}
       <motion.div
@@ -82,7 +83,7 @@ export function About() {
       </motion.div>
 
       {/* Bento Grid Container */}
-      <div className="w-full grid grid-cols-1 md:grid-cols-12 gap-5 sm:gap-6">
+      <div className="w-full flex flex-col md:grid md:grid-cols-12 gap-5 sm:gap-6">
         
         {/* ROW 1: LEFT CARD - Profile Avatar (Col 4) */}
         <motion.div
@@ -90,18 +91,22 @@ export function About() {
           whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="w-full col-span-1 md:col-span-5 lg:col-span-4 bg-neutral-950/85 border border-white/10 rounded-[1.75rem] sm:rounded-[2.5rem] p-2.5 sm:p-4 flex items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl hover:border-purple-500/40 transition-all duration-500 group relative overflow-hidden"
+          className="w-full min-w-0 md:col-span-5 lg:col-span-4 bg-neutral-950/90 border border-white/10 rounded-[1.75rem] sm:rounded-[2.5rem] p-3 sm:p-4 flex items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-md sm:backdrop-blur-2xl hover:border-purple-500/40 transition-all duration-500 group relative overflow-hidden transform-gpu"
         >
           {/* Subtle Ambient Backing Glow */}
           <div className="absolute inset-0 bg-gradient-to-tr from-purple-600/10 via-blue-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
 
-          <div className="w-full aspect-square rounded-[1.25rem] sm:rounded-[2rem] overflow-hidden bg-neutral-950 relative flex items-center justify-center group/img">
+          <div className="w-full aspect-square rounded-[1.35rem] sm:rounded-[2rem] overflow-hidden bg-neutral-950 relative flex items-center justify-center group/img">
             {/* Image Container with Smooth Motion */}
-            <motion.div className="w-full h-full relative overflow-hidden rounded-[1.25rem] sm:rounded-[2rem]">
+            <motion.div className="w-full h-full relative overflow-hidden rounded-[1.35rem] sm:rounded-[2rem]">
               {siteConfig.avatarUrl ? (
                 <img
                   src={siteConfig.avatarUrl}
                   alt={siteConfig.name}
+                  width={400}
+                  height={400}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover object-top filter saturate-[1.1] brightness-[1.02] group-hover/img:scale-108 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] transform-gpu"
                 />
               ) : null}
@@ -120,35 +125,35 @@ export function About() {
           whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-          className="w-full col-span-1 md:col-span-7 lg:col-span-8 bg-neutral-950/85 border border-white/10 rounded-[1.75rem] sm:rounded-[2.5rem] p-4 sm:p-7 md:p-8 lg:p-9 flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl hover:border-purple-500/40 transition-all duration-500 group relative overflow-hidden"
+          className="w-full min-w-0 md:col-span-7 lg:col-span-8 bg-neutral-950/90 border border-white/10 rounded-[1.75rem] sm:rounded-[2.5rem] p-5 sm:p-7 md:p-8 lg:p-9 flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-md sm:backdrop-blur-2xl hover:border-purple-500/40 transition-all duration-500 group relative overflow-hidden transform-gpu"
         >
           {/* Subtle Inner Ambient Glow */}
-          <div className="absolute -top-24 -right-24 w-72 h-72 bg-gradient-to-br from-purple-600/15 via-blue-600/10 to-transparent rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
+          <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-[radial-gradient(circle_at_center,rgba(147,51,234,0.16)_0%,rgba(37,99,235,0.08)_45%,transparent_70%)] pointer-events-none group-hover:scale-125 transition-transform duration-700" />
 
-          <div className="space-y-3 sm:space-y-4 relative z-10">
+          <div className="space-y-3 sm:space-y-4 relative z-10 min-w-0">
 
 
             <div className="space-y-1.5 sm:space-y-2 pt-0.5">
-              <h3 className="text-xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight">
+              <h3 className="text-xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight break-words">
                 {siteConfig.name}
               </h3>
-              <p className="text-[11px] sm:text-sm font-mono uppercase tracking-widest bg-gradient-to-r from-[#8B5CF6] via-[#3B82F6] to-[#06B6D4] bg-clip-text text-transparent font-bold">
+              <p className="text-[11px] sm:text-sm font-mono uppercase tracking-widest bg-gradient-to-r from-[#8B5CF6] via-[#3B82F6] to-[#06B6D4] bg-clip-text text-transparent font-bold break-words">
                 {siteConfig.title}
               </p>
             </div>
 
-            <div className="text-neutral-300 text-xs sm:text-base font-light leading-relaxed pt-1">
+            <div className="text-neutral-300 text-xs sm:text-base font-light leading-relaxed pt-1 break-words">
               <p>{siteConfig.aboutIntro}</p>
             </div>
           </div>
 
-          <div className="pt-4 sm:pt-6 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 text-[11px] sm:text-xs text-neutral-400 font-mono relative z-10 border-t border-white/5 mt-3 sm:mt-4">
-            <span className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-              {siteConfig.location}
+          <div className="pt-4 sm:pt-6 flex flex-wrap items-center justify-between gap-2.5 text-[11px] sm:text-xs text-neutral-400 font-mono relative z-10 border-t border-white/5 mt-4">
+            <span className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0" />
+              <span className="truncate">{siteConfig.location}</span>
             </span>
             <span className="flex items-center gap-1.5 text-emerald-400 font-medium px-2 py-0.5 sm:px-3 sm:py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 shrink-0 text-[10px] sm:text-xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
               Available for work
             </span>
           </div>
@@ -160,10 +165,10 @@ export function About() {
           whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-          className="md:col-span-6 bg-neutral-950/85 border border-white/10 rounded-[1.75rem] sm:rounded-[2.5rem] p-4 sm:p-8 flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl hover:border-purple-500/40 transition-all duration-500 group relative overflow-hidden"
+          className="w-full min-w-0 md:col-span-6 bg-neutral-950/90 border border-white/10 rounded-[1.75rem] sm:rounded-[2.5rem] p-4 sm:p-8 flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-md sm:backdrop-blur-2xl hover:border-purple-500/40 transition-all duration-500 group relative overflow-hidden transform-gpu"
         >
           {/* Subtle Ambient Orb */}
-          <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-purple-600/10 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
+          <div className="absolute -bottom-20 -left-20 w-60 h-60 rounded-full bg-[radial-gradient(circle_at_center,rgba(147,51,234,0.12)_0%,transparent_70%)] pointer-events-none group-hover:scale-125 transition-transform duration-700" />
 
           <div className="relative z-10">
             <div className="flex items-center gap-2 mb-4 sm:mb-6">
@@ -193,10 +198,10 @@ export function About() {
           whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          className="md:col-span-6 bg-neutral-950/85 border border-white/10 rounded-[1.75rem] sm:rounded-[2.5rem] p-4 sm:p-8 flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl hover:border-purple-500/40 transition-all duration-500 group relative overflow-hidden"
+          className="w-full min-w-0 md:col-span-6 bg-neutral-950/90 border border-white/10 rounded-[1.75rem] sm:rounded-[2.5rem] p-4 sm:p-8 flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-md sm:backdrop-blur-2xl hover:border-purple-500/40 transition-all duration-500 group relative overflow-hidden transform-gpu"
         >
           {/* Subtle Ambient Orb */}
-          <div className="absolute -top-20 -right-20 w-60 h-60 bg-blue-600/10 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
+          <div className="absolute -top-20 -right-20 w-60 h-60 rounded-full bg-[radial-gradient(circle_at_center,rgba(37,99,235,0.12)_0%,transparent_70%)] pointer-events-none group-hover:scale-125 transition-transform duration-700" />
 
           <div className="relative z-10">
             <div className="flex items-center gap-2 mb-4 sm:mb-6">
@@ -227,7 +232,7 @@ export function About() {
           whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="md:col-span-5 lg:col-span-4 bg-neutral-950/85 border border-white/10 rounded-[1.75rem] sm:rounded-[2.5rem] p-4 sm:p-6 flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl hover:border-purple-500/40 transition-all duration-500 group relative overflow-hidden min-h-[180px] sm:min-h-[220px]"
+          className="w-full min-w-0 md:col-span-5 lg:col-span-4 bg-neutral-950/90 border border-white/10 rounded-[1.75rem] sm:rounded-[2.5rem] p-4 sm:p-6 flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-md sm:backdrop-blur-2xl hover:border-purple-500/40 transition-all duration-500 group relative overflow-hidden min-h-[180px] sm:min-h-[220px] transform-gpu"
         >
           {/* Social Icons grid */}
           <div className="flex flex-wrap items-center gap-2 py-1 relative z-10">
@@ -277,10 +282,10 @@ export function About() {
           whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          className="md:col-span-7 lg:col-span-8 bg-neutral-950/85 border border-white/10 rounded-[1.75rem] sm:rounded-[2.5rem] p-4 sm:p-8 flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl hover:border-purple-500/40 transition-all duration-500 group relative overflow-hidden min-h-[180px] sm:min-h-[220px]"
+          className="w-full min-w-0 md:col-span-7 lg:col-span-8 bg-neutral-950/90 border border-white/10 rounded-[1.75rem] sm:rounded-[2.5rem] p-4 sm:p-8 flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-md sm:backdrop-blur-2xl hover:border-purple-500/40 transition-all duration-500 group relative overflow-hidden min-h-[180px] sm:min-h-[220px] transform-gpu"
         >
           {/* Ambient Purple/Blue Glow */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-gradient-to-r from-purple-600/15 via-blue-600/15 to-cyan-500/10 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full bg-[radial-gradient(circle_at_center,rgba(147,51,234,0.16)_0%,rgba(37,99,235,0.12)_45%,transparent_70%)] pointer-events-none group-hover:scale-125 transition-transform duration-700" />
 
           <div className="space-y-1 relative z-10">
             <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400 group-hover:rotate-12 group-hover:scale-110 transition-transform duration-300" />
@@ -306,5 +311,5 @@ export function About() {
 
     </section>
   );
-}
+});
 

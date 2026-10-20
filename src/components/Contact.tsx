@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { motion } from 'motion/react';
-import confetti from 'canvas-confetti';
-import { Mail, Phone, MapPin, Send, Instagram, Github, Linkedin, MessageSquare, Globe, Check, Loader2 } from 'lucide-react';
+import { Mail, Phone, MapPin, Send, Instagram, Github, Linkedin, Check, Loader2 } from 'lucide-react';
 import { siteConfig } from '../config/site';
 import { saveContactMessage } from '../lib/firebase';
 
-export function Contact() {
+export const Contact = memo(function Contact() {
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -69,6 +68,7 @@ export function Contact() {
 
       setFormSubmitted(true);
       try {
+        const { default: confetti } = await import('canvas-confetti');
         confetti({
           particleCount: 100,
           spread: 70,
@@ -141,7 +141,7 @@ export function Contact() {
               viewport={{ once: true }}
               whileHover={{ y: -3, scale: 1.01 }}
               transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-              className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-neutral-950/85 border border-white/10 hover:border-blue-500/50 text-white flex items-center gap-4 transition-all duration-300 shadow-[0_15px_35px_rgba(0,0,0,0.6)] hover:shadow-[0_15px_35px_rgba(59,130,246,0.25)] group cursor-pointer backdrop-blur-3xl relative overflow-hidden ring-1 ring-white/5"
+              className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-neutral-950/90 border border-white/10 hover:border-blue-500/50 text-white flex items-center gap-4 transition-all duration-300 shadow-[0_15px_35px_rgba(0,0,0,0.6)] hover:shadow-[0_15px_35px_rgba(59,130,246,0.25)] group cursor-pointer backdrop-blur-md sm:backdrop-blur-2xl relative overflow-hidden ring-1 ring-white/5 transform-gpu"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               <div className="p-2.5 sm:p-3 rounded-lg sm:rounded-xl bg-white/[0.03] border border-white/10 text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300 shadow-md shrink-0">
@@ -167,7 +167,7 @@ export function Contact() {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
               whileHover={{ y: -3, scale: 1.01 }}
-              className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-neutral-950/85 border border-white/10 hover:border-emerald-500/50 text-white flex items-center gap-4 transition-all duration-300 shadow-[0_15px_35px_rgba(0,0,0,0.6)] hover:shadow-[0_15px_35px_rgba(16,185,129,0.25)] group cursor-pointer backdrop-blur-3xl relative overflow-hidden ring-1 ring-white/5"
+              className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-neutral-950/90 border border-white/10 hover:border-emerald-500/50 text-white flex items-center gap-4 transition-all duration-300 shadow-[0_15px_35px_rgba(0,0,0,0.6)] hover:shadow-[0_15px_35px_rgba(16,185,129,0.25)] group cursor-pointer backdrop-blur-md sm:backdrop-blur-2xl relative overflow-hidden ring-1 ring-white/5 transform-gpu"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               <div className="p-2.5 sm:p-3 rounded-lg sm:rounded-xl bg-white/[0.03] border border-white/10 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white transition-all duration-300 shadow-md shrink-0">
@@ -190,7 +190,7 @@ export function Contact() {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
               whileHover={{ y: -3, scale: 1.01 }}
-              className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-neutral-950/85 border border-white/10 hover:border-purple-500/50 text-white flex items-center gap-4 transition-all duration-300 shadow-[0_15px_35px_rgba(0,0,0,0.6)] group backdrop-blur-3xl relative overflow-hidden ring-1 ring-white/5"
+              className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-neutral-950/90 border border-white/10 hover:border-purple-500/50 text-white flex items-center gap-4 transition-all duration-300 shadow-[0_15px_35px_rgba(0,0,0,0.6)] group backdrop-blur-md sm:backdrop-blur-2xl relative overflow-hidden ring-1 ring-white/5 transform-gpu"
             >
               <div className="p-2.5 sm:p-3 rounded-lg sm:rounded-xl bg-white/[0.03] border border-white/10 text-purple-400 group-hover:bg-purple-600 group-hover:text-white transition-all duration-300 shadow-md shrink-0">
                 <MapPin className="w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-300 group-hover:scale-110" />
@@ -217,14 +217,14 @@ export function Contact() {
           transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           className="lg:col-span-7"
         >
-          <div className="p-4 sm:p-7 md:p-10 rounded-[1.75rem] sm:rounded-[2.5rem] bg-neutral-950/85 border border-white/15 backdrop-blur-3xl shadow-[0_25px_80px_rgba(0,0,0,0.85)] ring-1 ring-white/10 text-white relative overflow-hidden group/form hover:border-purple-500/30 transition-all duration-500">
+          <div className="p-4 sm:p-7 md:p-10 rounded-[1.75rem] sm:rounded-[2.5rem] bg-neutral-950/90 border border-white/15 backdrop-blur-md sm:backdrop-blur-2xl shadow-[0_25px_80px_rgba(0,0,0,0.85)] ring-1 ring-white/10 text-white relative overflow-hidden group/form hover:border-purple-500/30 transition-all duration-500 transform-gpu">
             
             {/* Top Accent Gradient Border with Shimmer Pulse */}
             <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#8B5CF6] via-[#3B82F6] to-transparent animate-pulse duration-[3000ms]" />
 
-            {/* Inner Ambient Glow Orbs inside card */}
-            <div className="absolute -top-24 -right-24 w-72 h-72 bg-gradient-to-br from-purple-600/15 via-blue-600/10 to-transparent rounded-full blur-3xl pointer-events-none group-hover/form:scale-125 transition-transform duration-700" />
-            <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-gradient-to-tr from-cyan-500/15 via-purple-500/10 to-transparent rounded-full blur-3xl pointer-events-none group-hover/form:scale-125 transition-transform duration-700" />
+            {/* Inner Ambient Glow Orbs inside card (Pure GPU Radial Gradients) */}
+            <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-[radial-gradient(circle_at_center,rgba(147,51,234,0.16)_0%,rgba(37,99,235,0.08)_45%,transparent_70%)] pointer-events-none group-hover/form:scale-125 transition-transform duration-700" />
+            <div className="absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.14)_0%,rgba(147,51,234,0.08)_45%,transparent_70%)] pointer-events-none group-hover/form:scale-125 transition-transform duration-700" />
 
             {formSubmitted ? (
               <motion.div
@@ -503,4 +503,4 @@ export function Contact() {
       </motion.div>
     </section>
   );
-}
+});

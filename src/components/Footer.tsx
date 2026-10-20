@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { motion } from 'motion/react';
-import { ArrowUp, Instagram, Github, Linkedin, Mail, MessageCircle, Sparkles, Shield } from 'lucide-react';
+import React, { memo } from 'react';
 import { siteConfig } from '../config/site';
 
-export function Footer() {
+const nameLetters = "MUSHFII".split("");
+
+export const Footer = memo(function Footer() {
   const siteContent = siteConfig;
-  const nameLetters = "MUSHFII".split("");
 
   return (
     <footer className="relative pt-8 sm:pt-12 pb-6 sm:pb-8 px-4 sm:px-8 bg-[#050505] text-white overflow-hidden border-t border-white/10 select-none">
@@ -87,5 +86,5 @@ export function Footer() {
       </div>
     </footer>
   );
-}
+});
 

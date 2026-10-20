@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { motion } from 'motion/react';
 import { ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 
@@ -16,17 +16,18 @@ export interface CoverFlowItem {
 interface CoverFlowGalleryProps {
   items: CoverFlowItem[];
   onSelectItem?: (item: CoverFlowItem) => void;
-  autoPlayInterval?: number; // default 5000ms (5 seconds)
+  autoPlayInterval?: number;
   badgeTitle?: string;
 }
 
-export function CoverFlowGallery({
+export const CoverFlowGallery = memo(function CoverFlowGallery({
   items,
   onSelectItem,
   autoPlayInterval = 5000,
-  badgeTitle = "PHOTOGRAPHY WORKS",
 }: CoverFlowGalleryProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isInView, setIsInView] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const total = items.length;
 
@@ -38,38 +39,54 @@ export function CoverFlowGallery({
     setActiveIndex((prev) => (prev - 1 + total) % total);
   }, [total]);
 
-  // Auto-scroll effect: advances continuously every 5 seconds (autoPlayInterval = 5000ms) without pausing on hover
+  // Observe visibility so 3D carousel auto-advance only runs when visible in viewport
   useEffect(() => {
-    if (total <= 1) return;
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        setIsInView(entries[0]?.isIntersecting ?? false);
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (total <= 1 || !isInView) return;
 
     const interval = setInterval(() => {
-      setActiveIndex((prev) => (prev + 1) % total);
+      if (!document.hidden) {
+        setActiveIndex((prev) => (prev + 1) % total);
+      }
     }, autoPlayInterval);
 
     return () => clearInterval(interval);
-  }, [total, autoPlayInterval]);
+  }, [total, autoPlayInterval, isInView]);
 
-  const handleCardClick = (index: number) => {
-    if (index === activeIndex) {
-      if (onSelectItem) {
-        onSelectItem(items[index]);
+  const handleCardClick = useCallback(
+    (index: number) => {
+      if (index === activeIndex) {
+        if (onSelectItem) {
+          onSelectItem(items[index]);
+        }
+      } else {
+        setActiveIndex(index);
       }
-    } else {
-      setActiveIndex(index);
-    }
-  };
+    },
+    [activeIndex, items, onSelectItem]
+  );
 
-  // Helper to calculate 3D Cover Flow positioning for each item relative to activeIndex
   const getCardStyle = (index: number) => {
     let diff = index - activeIndex;
 
-    // Wrap around for smooth infinite carousel calculations
     if (diff > total / 2) diff -= total;
     if (diff < -total / 2) diff += total;
 
     const absDiff = Math.abs(diff);
 
-    // Only render cards within a visible range (-2 to +2)
     if (absDiff > 2) {
       return {
         visible: false,
@@ -78,10 +95,10 @@ export function CoverFlowGallery({
         rotateY: diff > 0 ? 45 : -45,
         opacity: 0,
         zIndex: 0,
+        absDiff,
       };
     }
 
-    // Positions & 3D transforms based on offset
     let xOffset = 0;
     let scale = 1;
     let rotateY = 0;
@@ -89,35 +106,30 @@ export function CoverFlowGallery({
     let zIndex = 30;
 
     if (diff === 0) {
-      // Center Active Card
       xOffset = 0;
       scale = 1;
       rotateY = 0;
       opacity = 1;
       zIndex = 30;
     } else if (diff === 1) {
-      // Right 1
       xOffset = 210;
       scale = 0.84;
       rotateY = -28;
       opacity = 0.82;
       zIndex = 20;
     } else if (diff === -1) {
-      // Left 1
       xOffset = -210;
       scale = 0.84;
       rotateY = 28;
       opacity = 0.82;
       zIndex = 20;
     } else if (diff === 2) {
-      // Far Right
       xOffset = 370;
       scale = 0.68;
       rotateY = -42;
       opacity = 0.45;
       zIndex = 10;
     } else if (diff === -2) {
-      // Far Left
       xOffset = -370;
       scale = 0.68;
       rotateY = 42;
@@ -132,16 +144,18 @@ export function CoverFlowGallery({
       rotateY,
       opacity,
       zIndex,
+      absDiff,
     };
   };
 
   return (
     <div
-      className="relative w-full py-10 px-2 sm:px-6 rounded-3xl overflow-hidden bg-neutral-950/90 dark:bg-[#08080a]/95 border border-neutral-800/80 shadow-[0_20px_80px_rgba(0,0,0,0.8)] backdrop-blur-2xl my-4 select-none"
+      ref={containerRef}
+      className="relative w-full py-10 px-2 sm:px-6 rounded-3xl overflow-hidden bg-neutral-950/90 dark:bg-[#08080a]/95 border border-neutral-800/80 shadow-[0_20px_80px_rgba(0,0,0,0.8)] backdrop-blur-md sm:backdrop-blur-xl my-4 select-none"
     >
-      {/* Subtle Background Glow Spheres */}
-      <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-[#2563EB]/15 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 w-[400px] h-[250px] bg-[#2563EB]/10 rounded-full blur-[120px] pointer-events-none" />
+      {/* Subtle Background Glow Spheres (GPU Radial Gradients instead of 140px CSS blur filters) */}
+      <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[500px] h-[300px] rounded-full bg-[radial-gradient(circle_at_center,rgba(37,99,235,0.18)_0%,transparent_70%)] pointer-events-none" />
+      <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 w-[400px] h-[250px] rounded-full bg-[radial-gradient(circle_at_center,rgba(37,99,235,0.12)_0%,transparent_70%)] pointer-events-none" />
 
       {/* 3D Coverflow Container */}
       <div className="relative w-full h-[420px] sm:h-[480px] flex items-center justify-center perspective-[1200px] overflow-hidden">
@@ -164,16 +178,14 @@ export function CoverFlowGallery({
                 zIndex: style.zIndex,
               }}
               transition={{
-                duration: 0.65,
-                ease: [0.25, 1, 0.5, 1], // Custom smooth cubic-bezier curve
+                duration: 0.6,
+                ease: [0.25, 1, 0.5, 1],
               }}
               style={{
                 position: 'absolute',
                 transformStyle: 'preserve-3d',
               }}
-              className={`cursor-pointer group w-[220px] sm:w-[270px] ${
-                isActive ? 'pointer-events-auto' : 'pointer-events-auto'
-              }`}
+              className="cursor-pointer group w-[220px] sm:w-[270px] pointer-events-auto transform-gpu"
             >
               {/* Card Container Frame matching dark website theme */}
               <div
@@ -189,8 +201,11 @@ export function CoverFlowGallery({
                     <img
                       src={item.url}
                       alt={item.title}
+                      width={270}
+                      height={338}
+                      decoding="async"
+                      loading={style.absDiff <= 1 ? 'eager' : 'lazy'}
                       className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
-                      loading="lazy"
                     />
                   ) : null}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 group-hover:opacity-40 transition-opacity" />
@@ -223,7 +238,7 @@ export function CoverFlowGallery({
       {/* Navigation Chevrons */}
       <button
         onClick={prevSlide}
-        className="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 z-50 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-neutral-900/85 hover:bg-[#2563EB] border border-white/15 text-white flex items-center justify-center backdrop-blur-xl shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+        className="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 z-50 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-neutral-900/85 hover:bg-[#2563EB] border border-white/15 text-white flex items-center justify-center backdrop-blur-md shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
         aria-label="Previous image"
       >
         <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -231,7 +246,7 @@ export function CoverFlowGallery({
 
       <button
         onClick={nextSlide}
-        className="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 z-50 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-neutral-900/85 hover:bg-[#2563EB] border border-white/15 text-white flex items-center justify-center backdrop-blur-xl shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+        className="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 z-50 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-neutral-900/85 hover:bg-[#2563EB] border border-white/15 text-white flex items-center justify-center backdrop-blur-md shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
         aria-label="Next image"
       >
         <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -254,4 +269,4 @@ export function CoverFlowGallery({
       </div>
     </div>
   );
-}
+});

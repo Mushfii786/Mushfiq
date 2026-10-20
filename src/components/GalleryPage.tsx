@@ -579,40 +579,35 @@ const categories = [
 
 interface GalleryCardProps {
   item: GalleryItem;
-  onClick: () => void;
+  priority?: boolean;
+  onSelect: (item: GalleryItem) => void;
 }
 
-function GalleryCard({ item, onClick }: GalleryCardProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+const GalleryCard = React.memo(function GalleryCard({ item, priority = false, onSelect }: GalleryCardProps) {
   const [isHovered, setIsHovered] = useState(false);
 
-  const handleMouseEnter = () => {
-    setIsHovered(true);
-    if (videoRef.current && item.videoUrl) {
-      videoRef.current.currentTime = 0;
-      const playPromise = videoRef.current.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(() => {
-          // Ignore automatic play abort or browser policy errors
-        });
-      }
+  const handleMouseEnter = useCallback(() => {
+    if (item.videoUrl) {
+      setIsHovered(true);
     }
-  };
+  }, [item.videoUrl]);
 
-  const handleMouseLeave = () => {
-    setIsHovered(false);
-    if (videoRef.current) {
-      videoRef.current.pause();
-      videoRef.current.currentTime = 0;
+  const handleMouseLeave = useCallback(() => {
+    if (item.videoUrl) {
+      setIsHovered(false);
     }
-  };
+  }, [item.videoUrl]);
+
+  const handleClick = useCallback(() => {
+    onSelect(item);
+  }, [item, onSelect]);
 
   return (
     <div
-      onClick={onClick}
+      onClick={handleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="group relative flex flex-col p-1.5 pb-2 sm:p-3 sm:pb-4 rounded-[14px] sm:rounded-[24px] md:rounded-[28px] bg-[#111216]/95 border sm:border-2 border-[#2563EB]/70 hover:border-[#3B82F6] shadow-[0_6px_20px_rgba(0,0,0,0.7),0_0_12px_rgba(37,99,235,0.15)] hover:shadow-[0_16px_40px_rgba(0,0,0,0.9),0_0_30px_rgba(37,99,235,0.35)] transition-all duration-300 active:scale-[0.97] cursor-pointer animate-fadeIn"
+      className="group relative flex flex-col p-1.5 pb-2 sm:p-3 sm:pb-4 rounded-[14px] sm:rounded-[24px] md:rounded-[28px] bg-[#111216]/95 border sm:border-2 border-[#2563EB]/70 hover:border-[#3B82F6] shadow-[0_6px_20px_rgba(0,0,0,0.7),0_0_12px_rgba(37,99,235,0.15)] hover:shadow-[0_16px_40px_rgba(0,0,0,0.9),0_0_30px_rgba(37,99,235,0.35)] transition-all duration-300 active:scale-[0.97] cursor-pointer animate-fadeIn transform-gpu"
     >
       {/* Image / Video Container with Rounded Inside */}
       <div className="relative w-full aspect-[4/5] rounded-[10px] sm:rounded-[18px] md:rounded-[20px] overflow-hidden bg-neutral-950 border border-neutral-800/60 shadow-inner">
@@ -620,25 +615,27 @@ function GalleryCard({ item, onClick }: GalleryCardProps) {
         <img
           src={item.url}
           alt={item.title}
-          loading="lazy"
+          width={400}
+          height={500}
+          decoding="async"
+          loading={priority ? 'eager' : 'lazy'}
           referrerPolicy="no-referrer"
           className={`w-full h-full object-cover transition-all duration-500 ease-out group-hover:scale-105 ${
             isHovered && item.videoUrl ? 'opacity-0' : 'opacity-100'
           }`}
         />
 
-        {/* Hover Auto Preview Video */}
-        {item.videoUrl && (
+        {/* Hover Auto Preview Video — mounted only on intentional hover so gallery open triggers zero video downloads */}
+        {item.videoUrl && isHovered && (
           <video
-            ref={videoRef}
             src={item.videoUrl}
+            poster={item.url}
             muted
             loop
             playsInline
+            autoPlay
             preload="metadata"
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 pointer-events-none ${
-              isHovered ? 'opacity-100 scale-105' : 'opacity-0 scale-100'
-            }`}
+            className="absolute inset-0 w-full h-full object-cover transition-opacity duration-300 pointer-events-none opacity-100 scale-105"
           />
         )}
 
@@ -663,7 +660,9 @@ function GalleryCard({ item, onClick }: GalleryCardProps) {
       </div>
     </div>
   );
-}
+});
+
+const INITIAL_BATCH_SIZE = 20;
 
 export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPageProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory.toUpperCase());
@@ -673,6 +672,8 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
   const [likedItems, setLikedItems] = useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [visibleCount, setVisibleCount] = useState<number>(INITIAL_BATCH_SIZE);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const handleDownload = async (url: string, title: string, e: React.MouseEvent, isVideo = false) => {
     e.stopPropagation();
@@ -706,12 +707,17 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
     }
   };
 
-  const handleCategoryClick = (catId: string) => {
+  const handleCategoryClick = useCallback((catId: string) => {
     setSelectedCategory(catId);
+    setVisibleCount(INITIAL_BATCH_SIZE);
     setAnimKey((prev) => prev + 1);
-  };
+  }, []);
 
   const deferredSearch = useDeferredValue(searchQuery);
+
+  useEffect(() => {
+    setVisibleCount(INITIAL_BATCH_SIZE);
+  }, [deferredSearch]);
 
   const filteredItems = useMemo(() => {
     const q = deferredSearch.toLowerCase().trim();
@@ -730,6 +736,11 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
       );
     });
   }, [selectedCategory, deferredSearch]);
+
+  const visibleItems = useMemo(
+    () => filteredItems.slice(0, visibleCount),
+    [filteredItems, visibleCount]
+  );
 
   const activeIndex = activeItem ? filteredItems.findIndex((p) => p.id === activeItem.id) : -1;
 
@@ -755,6 +766,24 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
     containerRef.current?.focus();
   }, []);
 
+  // Progressive viewport-based loading for large galleries
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+    if (!sentinel || visibleCount >= filteredItems.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCount((prev) => Math.min(prev + INITIAL_BATCH_SIZE, filteredItems.length));
+        }
+      },
+      { root: containerRef.current, rootMargin: '400px 0px', threshold: 0 }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [visibleCount, filteredItems.length]);
+
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -775,19 +804,10 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
       }
     };
 
-    const handleWheel = (e: WheelEvent) => {
-      if (activeItem) return;
-      if (containerRef.current) {
-        containerRef.current.scrollTop += e.deltaY;
-      }
-    };
-
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('wheel', handleWheel, { passive: true });
     return () => {
       document.body.style.overflow = originalOverflow;
       window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('wheel', handleWheel);
     };
   }, [activeItem, onClose, handlePrev, handleNext]);
 
@@ -805,22 +825,23 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
   return (
     <motion.div
       ref={containerRef}
+      data-lenis-prevent
       tabIndex={-1}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
+      transition={{ duration: 0.25, ease: 'easeOut' }}
       className="fixed inset-0 z-[100] bg-[#090A0F] text-neutral-100 overflow-y-auto overscroll-contain touch-pan-y outline-none font-sans selection:bg-[#2563EB] selection:text-white"
     >
-      {/* Background Ambient Glow */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[140px]" />
-        <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-cyan-600/10 rounded-full blur-[140px]" />
+      {/* Background Ambient Glow (Pure GPU Radial Gradients instead of 140px CSS blur filters) */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden" style={{ contain: 'strict' }}>
+        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full bg-[radial-gradient(circle_at_center,rgba(37,99,235,0.12)_0%,transparent_70%)] transform-gpu" />
+        <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] rounded-full bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.10)_0%,transparent_70%)] transform-gpu" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/[0.02] via-transparent to-transparent" />
       </div>
 
       {/* Top Header Navigation */}
-      <header className="sticky top-0 z-40 bg-[#090A0F]/95 backdrop-blur-2xl border-b border-white/[0.08] px-2.5 sm:px-4 lg:px-8 py-2 sm:py-3 flex flex-col lg:flex-row lg:items-center justify-between gap-2 sm:gap-3 shadow-[0_10px_35px_rgba(0,0,0,0.85)] relative">
+      <header className="sticky top-0 z-40 bg-[#090A0F]/95 backdrop-blur-xl border-b border-white/[0.08] px-2.5 sm:px-4 lg:px-8 py-2 sm:py-3 flex flex-col lg:flex-row lg:items-center justify-between gap-2 sm:gap-3 shadow-[0_10px_35px_rgba(0,0,0,0.85)] relative">
         {/* Subtle Top Ambient Gradient Highlight */}
         <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#2563EB]/40 via-purple-500/30 to-transparent pointer-events-none" />
         
@@ -904,7 +925,7 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
         </div>
       </header>
 
-      {/* Main Gallery Area - Orderly Responsive Grid with 3 columns on mobile */}
+      {/* Main Gallery Area - Orderly Responsive Grid */}
       <main className="max-w-[1540px] mx-auto px-2 xs:px-3 sm:px-6 md:px-8 py-4 sm:py-8 relative z-10">
         <AnimatePresence mode="wait">
           <motion.div
@@ -912,7 +933,7 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
             className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4 md:gap-6 items-stretch"
           >
             {filteredItems.length === 0 ? (
@@ -949,11 +970,12 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
                 </div>
               </div>
             ) : (
-              filteredItems.map((item) => (
+              filteredItems.map((item, idx) => (
                 <GalleryCard
                   key={item.id}
                   item={item}
-                  onClick={() => setActiveItem(item)}
+                  priority={idx < 10}
+                  onSelect={setActiveItem}
                 />
               ))
             )}
@@ -1031,16 +1053,28 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
                 {/* Main Photo / Video Media - Fitted to Height */}
                 <div className="relative z-10 w-full h-full flex items-center justify-center p-2 rounded-[20px] overflow-hidden">
                   {activeItem.videoUrl ? (
-                    <video
-                      key={activeItem.videoUrl}
-                      src={activeItem.videoUrl}
-                      poster={activeItem.url}
-                      controls
-                      autoPlay
-                      playsInline
-                      loop
-                      className="h-full w-auto max-w-full object-contain rounded-[18px] select-none block shadow-2xl"
-                    />
+                    activeItem.videoUrl.includes('pinterest.com') ? (
+                      <iframe
+                        src={activeItem.videoUrl}
+                        height="714"
+                        width="345"
+                        frameBorder="0"
+                        scrolling="no"
+                        title={activeItem.title}
+                        className="h-full w-auto max-w-full rounded-[18px] shadow-2xl"
+                      />
+                    ) : (
+                      <video
+                        key={activeItem.videoUrl}
+                        src={activeItem.videoUrl}
+                        poster={activeItem.url}
+                        controls
+                        autoPlay
+                        playsInline
+                        loop
+                        className="h-full w-auto max-w-full object-contain rounded-[18px] select-none block shadow-2xl"
+                      />
+                    )
                   ) : (
                     <img
                       src={activeItem.url}

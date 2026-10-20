@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { motion } from 'motion/react';
 import { Sparkles } from 'lucide-react';
 
@@ -7,21 +7,17 @@ interface GlassBadgeProps {
   onClick?: () => void;
 }
 
-export function GlassBadge({ text = "Available for Freelance Projects", onClick }: GlassBadgeProps) {
+export const GlassBadge = memo(function GlassBadge({ text = "Available for Freelance Projects", onClick }: GlassBadgeProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: -20, scale: 0.95 }}
+      initial={{ opacity: 0, y: -16, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] as const }}
+      transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] as const }}
       className="inline-block z-20 cursor-default select-none"
     >
-      <motion.div
-        animate={{ y: [0, -4, 0] }}
-        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-        whileHover={{ scale: 1.05, y: -2 }}
-        whileTap={{ scale: 0.98 }}
+      <div
         onClick={onClick}
-        className="group relative inline-flex items-center gap-1.5 sm:gap-2 px-2.5 py-1 sm:px-4 sm:py-1.5 rounded-full bg-neutral-900/85 hover:bg-neutral-900 border border-white/10 hover:border-purple-500/50 backdrop-blur-2xl shadow-[0_10px_30px_rgba(0,0,0,0.8)] hover:shadow-[0_0_30px_rgba(139,92,246,0.35)] transition-all duration-300 overflow-hidden ring-1 ring-white/5"
+        className="group relative inline-flex items-center gap-1.5 sm:gap-2 px-2.5 py-1 sm:px-4 sm:py-1.5 rounded-full bg-neutral-900/90 hover:bg-neutral-900 border border-white/10 hover:border-purple-500/50 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.8)] hover:shadow-[0_0_30px_rgba(139,92,246,0.35)] hover:scale-105 active:scale-98 transition-all duration-300 overflow-hidden ring-1 ring-white/5"
       >
         {/* Shimmer Light Beam Sweep */}
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out pointer-events-none" />
@@ -42,7 +38,7 @@ export function GlassBadge({ text = "Available for Freelance Projects", onClick 
 
         {/* Subtle Sparkle Accent */}
         <Sparkles className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 text-purple-400 group-hover:rotate-12 group-hover:scale-110 transition-transform duration-300 shrink-0" />
-      </motion.div>
+      </div>
     </motion.div>
   );
-}
+});

@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, memo } from 'react';
 import { motion } from 'motion/react';
 import { Sparkles, ArrowRight } from 'lucide-react';
-import { projects, photography, videography } from '../config/site';
+import { photography, videography } from '../config/site';
 import { Project, Photo, VideoItem } from '../types';
 const ProjectModal = React.lazy(() => import('./ProjectModal').then((m) => ({ default: m.ProjectModal })));
 const PhotoLightbox = React.lazy(() => import('./PhotoLightbox').then((m) => ({ default: m.PhotoLightbox })));
@@ -10,13 +10,9 @@ const GalleryPage = React.lazy(() => import('./GalleryPage').then((m) => ({ defa
 import { CoverFlowGallery, CoverFlowItem } from './CoverFlowGallery';
 import RegeneratedImage from '../assets/images/regenerated_image_1786114032574.webp'; 
 import RegeneratedImage2 from '../assets/images/regenerated_image_1786192879031.jpg'; 
-import FortKochi from '../assets/images/FortKochi.jpg';
 import RegeneratedImage4 from '../assets/images/regenerated_image_1787841813563.webp';
-import RegeneratedImage5 from '../assets/images/regenerated_image_1787807967477.jpg';
-import Night from '../assets/images/Night.jpg';
-import Horse from '../assets/images/Horse.jpg';
 
-export function Projects() {
+export const Projects = memo(function Projects() {
   const photos = photography;
 
   const [activeProject, setActiveProject] = useState<Project | null>(null);
@@ -81,7 +77,7 @@ export function Projects() {
     ];
   }, [photos]);
 
-  const handleSelectItem = (item: CoverFlowItem) => {
+  const handleSelectItem = useCallback((item: CoverFlowItem) => {
     if (item.type === 'project' && item.data) {
       setActiveProject(item.data);
     } else if (item.type === 'video' && item.data) {
@@ -91,13 +87,13 @@ export function Projects() {
     } else {
       setShowFullGallery(true);
     }
-  };
+  }, []);
 
   return (
     <section id="projects" className="py-24 px-4 sm:px-6 max-w-7xl mx-auto relative overflow-hidden select-none">
       
-      {/* Background Ambient Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-[#2563EB]/10 rounded-full blur-[150px] pointer-events-none" />
+      {/* Background Ambient Glow (Pure GPU Radial Gradient instead of 150px CSS blur filter) */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] rounded-full bg-[radial-gradient(ellipse_at_center,rgba(37,99,235,0.14)_0%,transparent_70%)] pointer-events-none transform-gpu" />
 
       {/* Header */}
       <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16 space-y-4">
@@ -186,5 +182,5 @@ export function Projects() {
 
     </section>
   );
-}
+});
 

@@ -688,6 +688,22 @@ export const videography: VideoItem[] = [
     likes: 2180
   },
   {
+    id: "video-birthday",
+    title: "Birthday Party",
+    category: "Birthday Wishes Reel",
+    posterUrl: "/images/birthday-party-poster.jpg",
+    videoUrl: "/videos/birthday-party.mp4",
+    caption: "Birthday Wishes Reel",
+    location: "Birthday Wishes Reel",
+    duration: "0:30",
+    camera: "Sony A7IV",
+    lens: "35mm f/1.4 GM",
+    settings: "4K 60fps • S-Log3",
+    year: "2026 Film",
+    views: 15400,
+    likes: 1820
+  },
+  {
     id: "video-29",
     title: "Huda Literature Festival",
     category: "Highlights",

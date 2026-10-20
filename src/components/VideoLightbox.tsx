@@ -104,58 +104,74 @@ export function VideoLightbox({ video, videos, onClose, onSelectVideo }: VideoLi
         >
           {/* Main Video Viewport */}
           <div className="relative flex-1 bg-black flex flex-col items-center justify-center min-h-[350px] lg:min-h-[500px] group overflow-hidden">
-            <video
-              ref={videoRef}
-              src={video.videoUrl}
-              poster={video.posterUrl}
-              autoPlay
-              playsInline
-              loop
-              muted={isMuted}
-              onTimeUpdate={handleTimeUpdate}
-              onClick={togglePlay}
-              className="w-full h-full max-h-[75vh] object-contain cursor-pointer"
-            />
-
-            {/* Floating Overlay Controls on Video */}
-            <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-90 group-hover:opacity-100 transition-opacity flex flex-col gap-2">
-              {/* Progress Scrubber */}
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={progress}
-                onChange={handleSeek}
-                className="w-full h-1.5 bg-neutral-700 accent-[#2563EB] rounded-lg cursor-pointer"
-              />
-
-              <div className="flex items-center justify-between text-white text-xs font-mono pt-1">
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={togglePlay}
-                    className="p-1.5 rounded-full bg-white/10 hover:bg-[#2563EB] transition-colors"
-                  >
-                    {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
-                  </button>
-                  <button
-                    onClick={toggleMute}
-                    className="p-1.5 rounded-full bg-white/10 hover:bg-[#2563EB] transition-colors"
-                  >
-                    {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                  </button>
-                  <span className="text-neutral-400">{video.duration}</span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={toggleFullscreen}
-                    className="p-1.5 rounded-full bg-white/10 hover:bg-[#2563EB] transition-colors"
-                  >
-                    <Maximize className="w-4 h-4" />
-                  </button>
-                </div>
+            {video.videoUrl.includes('pinterest.com') ? (
+              <div className="w-full h-full flex items-center justify-center p-4">
+                <iframe
+                  src={video.videoUrl}
+                  height="714"
+                  width="345"
+                  frameBorder="0"
+                  scrolling="no"
+                  className="rounded-2xl max-h-[75vh]"
+                  title={video.title}
+                />
               </div>
-            </div>
+            ) : (
+              <>
+                <video
+                  ref={videoRef}
+                  src={video.videoUrl}
+                  poster={video.posterUrl}
+                  autoPlay
+                  playsInline
+                  loop
+                  muted={isMuted}
+                  onTimeUpdate={handleTimeUpdate}
+                  onClick={togglePlay}
+                  className="w-full h-full max-h-[75vh] object-contain cursor-pointer"
+                />
+
+                {/* Floating Overlay Controls on Video */}
+                <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-90 group-hover:opacity-100 transition-opacity flex flex-col gap-2">
+                  {/* Progress Scrubber */}
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={progress}
+                    onChange={handleSeek}
+                    className="w-full h-1.5 bg-neutral-700 accent-[#2563EB] rounded-lg cursor-pointer"
+                  />
+
+                  <div className="flex items-center justify-between text-white text-xs font-mono pt-1">
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={togglePlay}
+                        className="p-1.5 rounded-full bg-white/10 hover:bg-[#2563EB] transition-colors"
+                      >
+                        {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
+                      </button>
+                      <button
+                        onClick={toggleMute}
+                        className="p-1.5 rounded-full bg-white/10 hover:bg-[#2563EB] transition-colors"
+                      >
+                        {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                      </button>
+                      <span className="text-neutral-400">{video.duration}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={toggleFullscreen}
+                        className="p-1.5 rounded-full bg-white/10 hover:bg-[#2563EB] transition-colors"
+                      >
+                        <Maximize className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Navigation Arrows */}
             <button
