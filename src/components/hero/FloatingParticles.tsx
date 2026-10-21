@@ -125,6 +125,13 @@ export const FloatingParticles = memo(function FloatingParticles() {
 
     let lastTime = performance.now();
 
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        lastTime = performance.now();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     const drawStaticOrAnimated = (delta: number) => {
       ctx.clearRect(0, 0, width, height);
 
@@ -206,6 +213,7 @@ export const FloatingParticles = memo(function FloatingParticles() {
       return () => {
         observer.disconnect();
         if (resizeTimer !== null) clearTimeout(resizeTimer);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
         window.removeEventListener('resize', handleResize);
       };
     }
@@ -214,14 +222,15 @@ export const FloatingParticles = memo(function FloatingParticles() {
       animationFrameId = requestAnimationFrame(render);
       if (!isVisibleInViewport || document.hidden) return;
 
-      const delta = Math.min((now - lastTime) / 1000, 0.033);
+      const delta = Math.min((now - lastTime) / 1000, 0.05);
       // Cap mobile particle frame rate to ~30fps to preserve battery and touch scroll smoothness
       if (isTouchDevice && delta < 0.03) return;
       lastTime = now;
 
       if (!isTouchDevice) {
-        mouseX += (targetMouseX - mouseX) * 0.1;
-        mouseY += (targetMouseY - mouseY) * 0.1;
+        const mouseLerp = 1 - Math.pow(1 - 0.1, delta * 60);
+        mouseX += (targetMouseX - mouseX) * mouseLerp;
+        mouseY += (targetMouseY - mouseY) * mouseLerp;
       }
 
       drawStaticOrAnimated(delta);
@@ -232,6 +241,7 @@ export const FloatingParticles = memo(function FloatingParticles() {
     return () => {
       observer.disconnect();
       if (resizeTimer !== null) clearTimeout(resizeTimer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseleave', handleMouseLeave);

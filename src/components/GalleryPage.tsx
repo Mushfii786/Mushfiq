@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, useDeferredValue } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, X, Heart, Share2, Sparkles, Layers, Palette, Check, Camera, Download, MapPin, ChevronLeft, ChevronRight, Search, SlidersHorizontal, Video, Play } from 'lucide-react';
+import { ShareModal } from './ShareModal';
 import { videography } from '../config/site';
 import RegeneratedImage from '../assets/images/regenerated_image_1786114032574.webp'; 
 import RegeneratedImage2 from '../assets/images/regenerated_image_1786192879031.jpg'; 
@@ -577,6 +578,33 @@ const categories = [
   { id: 'VIDEOGRAPHY', label: 'Videography', icon: Video },
 ];
 
+export type MediaTypeFilter = 'all' | 'images' | 'videos';
+export type SortByOption = 'default' | 'latest' | 'oldest' | 'a-z' | 'z-a';
+
+// Custom SVG icon matching the requested sliders design
+function FilterSlidersIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="4" y1="8" x2="13" y2="8" />
+      <circle cx="16" cy="8" r="2.8" stroke="currentColor" strokeWidth="2.2" fill="#22242b" />
+      <line x1="19" y1="8" x2="20" y2="8" />
+      <line x1="4" y1="16" x2="8" y2="16" />
+      <circle cx="11" cy="16" r="2.8" stroke="currentColor" strokeWidth="2.2" fill="#22242b" />
+      <line x1="14" y1="16" x2="20" y2="16" />
+    </svg>
+  );
+}
+
+// Lightweight coordinator so at most one gallery video preview plays at a time without re-rendering the entire grid
+let activeGalleryVideoId: string | null = null;
+const videoPreviewSubscribers = new Set<(activeId: string | null) => void>();
+
+function setActiveGalleryVideoPreview(id: string | null) {
+  if (activeGalleryVideoId === id) return;
+  activeGalleryVideoId = id;
+  videoPreviewSubscribers.forEach((listener) => listener(id));
+}
+
 interface GalleryCardProps {
   item: GalleryItem;
   priority?: boolean;
@@ -585,25 +613,97 @@ interface GalleryCardProps {
 
 const GalleryCard = React.memo(function GalleryCard({ item, priority = false, onSelect }: GalleryCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [isInViewport, setIsInViewport] = useState(true);
+  const [videoError, setVideoError] = useState(false);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const previewVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  // Subscribe only video cards to single-active preview coordinator and viewport observer
+  useEffect(() => {
+    if (!item.videoUrl) return;
+
+    const handleActiveChange = (activeId: string | null) => {
+      if (activeId !== item.id) {
+        setIsHovered(false);
+      }
+    };
+    videoPreviewSubscribers.add(handleActiveChange);
+
+    const el = cardRef.current;
+    let observer: IntersectionObserver | null = null;
+    if (el && typeof IntersectionObserver !== 'undefined') {
+      observer = new IntersectionObserver(
+        (entries) => {
+          const visible = entries[0]?.isIntersecting ?? false;
+          setIsInViewport(visible);
+          if (!visible && activeGalleryVideoId === item.id) {
+            setActiveGalleryVideoPreview(null);
+            setIsHovered(false);
+          }
+        },
+        { rootMargin: '100px 0px', threshold: 0.1 }
+      );
+      observer.observe(el);
+    }
+
+    return () => {
+      videoPreviewSubscribers.delete(handleActiveChange);
+      if (activeGalleryVideoId === item.id) {
+        activeGalleryVideoId = null;
+      }
+      observer?.disconnect();
+    };
+  }, [item.id, item.videoUrl]);
+
+  const shouldPlayPreview = Boolean(item.videoUrl && isHovered && isInViewport && !videoError);
+
+  useEffect(() => {
+    const vid = previewVideoRef.current;
+    if (!vid || !shouldPlayPreview) return;
+
+    const playPromise = vid.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        // Autoplay prevented by browser policy or low-power mode; keep poster visible
+        setIsHovered(false);
+      });
+    }
+
+    return () => {
+      try {
+        vid.pause();
+      } catch {}
+    };
+  }, [shouldPlayPreview]);
 
   const handleMouseEnter = useCallback(() => {
     if (item.videoUrl) {
+      setVideoError(false);
+      setActiveGalleryVideoPreview(item.id);
       setIsHovered(true);
     }
-  }, [item.videoUrl]);
+  }, [item.id, item.videoUrl]);
 
   const handleMouseLeave = useCallback(() => {
     if (item.videoUrl) {
+      if (activeGalleryVideoId === item.id) {
+        setActiveGalleryVideoPreview(null);
+      }
       setIsHovered(false);
     }
-  }, [item.videoUrl]);
+  }, [item.id, item.videoUrl]);
 
   const handleClick = useCallback(() => {
+    if (item.videoUrl && activeGalleryVideoId === item.id) {
+      setActiveGalleryVideoPreview(null);
+      setIsHovered(false);
+    }
     onSelect(item);
   }, [item, onSelect]);
 
   return (
     <div
+      ref={cardRef}
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -619,22 +719,24 @@ const GalleryCard = React.memo(function GalleryCard({ item, priority = false, on
           height={500}
           decoding="async"
           loading={priority ? 'eager' : 'lazy'}
+          fetchPriority={priority ? 'high' : 'auto'}
           referrerPolicy="no-referrer"
           className={`w-full h-full object-cover transition-all duration-500 ease-out group-hover:scale-105 ${
-            isHovered && item.videoUrl ? 'opacity-0' : 'opacity-100'
+            shouldPlayPreview ? 'opacity-0' : 'opacity-100'
           }`}
         />
 
-        {/* Hover Auto Preview Video — mounted only on intentional hover so gallery open triggers zero video downloads */}
-        {item.videoUrl && isHovered && (
+        {/* Hover Auto Preview Video — mounted only on intentional hover when visible in viewport */}
+        {shouldPlayPreview && !item.videoUrl?.includes('pinterest.com') && (
           <video
+            ref={previewVideoRef}
             src={item.videoUrl}
             poster={item.url}
             muted
             loop
             playsInline
-            autoPlay
             preload="metadata"
+            onError={() => setVideoError(true)}
             className="absolute inset-0 w-full h-full object-cover transition-opacity duration-300 pointer-events-none opacity-100 scale-105"
           />
         )}
@@ -642,7 +744,7 @@ const GalleryCard = React.memo(function GalleryCard({ item, priority = false, on
         {/* Play Icon Badge */}
         {item.category === 'Videography' && (
           <div className={`absolute top-2 right-2 sm:top-2.5 sm:right-2.5 z-10 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-black/75 backdrop-blur-md border border-white/25 flex items-center justify-center text-white shadow-lg transition-all duration-200 ${
-            isHovered ? 'bg-[#2563EB] border-[#2563EB] scale-110' : 'group-hover:bg-[#2563EB] group-hover:border-[#2563EB]'
+            shouldPlayPreview ? 'bg-[#2563EB] border-[#2563EB] scale-110' : 'group-hover:bg-[#2563EB] group-hover:border-[#2563EB]'
           }`}>
             <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-white text-white ml-0.5" />
           </div>
@@ -662,7 +764,7 @@ const GalleryCard = React.memo(function GalleryCard({ item, priority = false, on
   );
 });
 
-const INITIAL_BATCH_SIZE = 20;
+const INITIAL_BATCH_SIZE = 24;
 
 export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPageProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory.toUpperCase());
@@ -672,8 +774,33 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
   const [likedItems, setLikedItems] = useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [sharedId, setSharedId] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState<number>(INITIAL_BATCH_SIZE);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+  // Filter & Sort State
+  const [mediaType, setMediaType] = useState<MediaTypeFilter>('all');
+  const [sortBy, setSortBy] = useState<SortByOption>('default');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement | null>(null);
+
+  // Close filter dropdown on outside click
+  useEffect(() => {
+    if (!isFilterOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setIsFilterOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isFilterOpen]);
+
+  const handleShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsShareModalOpen(true);
+  };
 
   const handleDownload = async (url: string, title: string, e: React.MouseEvent, isVideo = false) => {
     e.stopPropagation();
@@ -709,33 +836,86 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
 
   const handleCategoryClick = useCallback((catId: string) => {
     setSelectedCategory(catId);
+    if (catId === 'VIDEOGRAPHY' && mediaType === 'images') {
+      setMediaType('videos');
+    } else if (catId !== 'VIDEOGRAPHY' && catId !== 'ALL' && mediaType === 'videos') {
+      setMediaType('images');
+    }
     setVisibleCount(INITIAL_BATCH_SIZE);
     setAnimKey((prev) => prev + 1);
-  }, []);
+  }, [mediaType]);
 
   const deferredSearch = useDeferredValue(searchQuery);
 
   useEffect(() => {
     setVisibleCount(INITIAL_BATCH_SIZE);
-  }, [deferredSearch]);
+  }, [deferredSearch, mediaType, sortBy]);
 
   const filteredItems = useMemo(() => {
     const q = deferredSearch.toLowerCase().trim();
-    return galleryGridPhotos.filter((item) => {
-      const matchesCategory =
-        selectedCategory === 'ALL' || item.category.toUpperCase() === selectedCategory;
-      if (!matchesCategory) return false;
-      if (!q) return true;
-      return (
-        item.title.toLowerCase().includes(q) ||
-        (item.clientOrEvent && item.clientOrEvent.toLowerCase().includes(q)) ||
-        (item.caption && item.caption.toLowerCase().includes(q)) ||
-        (item.badge && item.badge.toLowerCase().includes(q)) ||
-        (item.tools && item.tools.toLowerCase().includes(q)) ||
-        item.category.toLowerCase().includes(q)
-      );
+
+    // 1. Filter by category, search query, and media type (separate for videos / images)
+    const list = galleryGridPhotos
+      .map((item, originalIndex) => ({ item, originalIndex }))
+      .filter(({ item }) => {
+        const matchesCategory =
+          selectedCategory === 'ALL' || item.category.toUpperCase() === selectedCategory;
+        if (!matchesCategory) return false;
+
+        // Separate for videos / images
+        const isVideoItem = Boolean(item.videoUrl || item.category === 'Videography');
+        if (mediaType === 'images' && isVideoItem) return false;
+        if (mediaType === 'videos' && !isVideoItem) return false;
+
+        if (!q) return true;
+        return (
+          item.title.toLowerCase().includes(q) ||
+          (item.clientOrEvent && item.clientOrEvent.toLowerCase().includes(q)) ||
+          (item.caption && item.caption.toLowerCase().includes(q)) ||
+          (item.badge && item.badge.toLowerCase().includes(q)) ||
+          (item.tools && item.tools.toLowerCase().includes(q)) ||
+          item.category.toLowerCase().includes(q)
+        );
+      });
+
+    // 2. Sort order:
+    // In Photography & Videography, images appear first (specifically when no media filter is applied / viewing all).
+    // If a filter is used (e.g. Media Type = Videos/Images, or Category = Videography/Photography),
+    // the items displayed correspond strictly to that filter.
+    list.sort((a, b) => {
+      const aIsVideo = Boolean(a.item.videoUrl || a.item.category === 'Videography');
+      const bIsVideo = Boolean(b.item.videoUrl || b.item.category === 'Videography');
+
+      // Prioritize images over videos whenever both are present
+      if (aIsVideo !== bIsVideo) {
+        return aIsVideo ? 1 : -1;
+      }
+
+      // Default: retain original curated order on the website (images first in original sequence, then videos in original sequence)
+      if (sortBy === 'default') {
+        return a.originalIndex - b.originalIndex;
+      }
+
+      // Within images (or within videos), sort by selected option based on added order or name
+      if (sortBy === 'a-z') {
+        return a.item.title.localeCompare(b.item.title, undefined, { sensitivity: 'base' });
+      }
+      if (sortBy === 'z-a') {
+        return b.item.title.localeCompare(a.item.title, undefined, { sensitivity: 'base' });
+      }
+      if (sortBy === 'oldest') {
+        // Earliest added to the website first
+        return a.originalIndex - b.originalIndex;
+      }
+      if (sortBy === 'latest') {
+        // Most recently added to the website first
+        return b.originalIndex - a.originalIndex;
+      }
+      return a.originalIndex - b.originalIndex;
     });
-  }, [selectedCategory, deferredSearch]);
+
+    return list.map(({ item }) => item);
+  }, [selectedCategory, deferredSearch, mediaType, sortBy]);
 
   const visibleItems = useMemo(
     () => filteredItems.slice(0, visibleCount),
@@ -784,18 +964,40 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
     return () => observer.disconnect();
   }, [visibleCount, filteredItems.length]);
 
+  // Preload adjacent next/prev images when lightbox is open for instant navigation
+  useEffect(() => {
+    if (!activeItem || filteredItems.length <= 1) return;
+    const currentIdx = filteredItems.findIndex((p) => p.id === activeItem.id);
+    if (currentIdx === -1) return;
+
+    const nextItem = filteredItems[(currentIdx + 1) % filteredItems.length];
+    const prevItem = filteredItems[(currentIdx - 1 + filteredItems.length) % filteredItems.length];
+
+    [nextItem?.url, prevItem?.url].forEach((src) => {
+      if (src) {
+        const img = new Image();
+        img.decoding = 'async';
+        img.src = src;
+      }
+    });
+  }, [activeItem, filteredItems]);
+
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (activeItem) {
+        if (isFilterOpen) {
+          setIsFilterOpen(false);
+        } else if (isShareModalOpen) {
+          setIsShareModalOpen(false);
+        } else if (activeItem) {
           setActiveItem(null);
         } else {
           onClose();
         }
-      } else if (activeItem) {
+      } else if (activeItem && !isShareModalOpen) {
         if (e.key === 'ArrowLeft') {
           handlePrev();
         } else if (e.key === 'ArrowRight') {
@@ -809,7 +1011,7 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
       document.body.style.overflow = originalOverflow;
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [activeItem, onClose, handlePrev, handleNext]);
+  }, [activeItem, isFilterOpen, isShareModalOpen, onClose, handlePrev, handleNext]);
 
   const toggleLike = (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -869,28 +1071,167 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
           </div>
         </div>
 
-        {/* Center: Compact Professional Search Bar */}
-        <div className="w-full lg:max-w-xs xl:max-w-sm relative">
-          <div className="relative flex items-center w-full group">
-            <div className="absolute left-3 pointer-events-none flex items-center justify-center text-neutral-400 group-focus-within:text-blue-400 transition-colors duration-200">
-              <Search className="w-3.5 h-3.5" />
+        {/* Center: Compact Professional Search Bar & Filter Squircle Button */}
+        <div className="flex items-center gap-2 w-full lg:max-w-xs xl:max-w-sm relative">
+          <div className="relative flex-1 group">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none flex items-center justify-center text-neutral-400 group-focus-within:text-blue-400 transition-colors duration-200 z-10">
+              <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search works..."
-              className="w-full pl-9 pr-8 py-1.5 sm:py-2 rounded-full bg-neutral-900/90 hover:bg-neutral-900 focus:bg-neutral-950 text-[11px] sm:text-xs text-white placeholder-neutral-500 border border-neutral-800 hover:border-neutral-700 focus:border-blue-500/70 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-[0_2px_8px_rgba(0,0,0,0.5),inset_0_1px_2px_rgba(0,0,0,0.4)] transition-all duration-200"
+              className="w-full pl-9 sm:pl-9.5 pr-8 py-1.5 sm:py-2 rounded-full bg-neutral-900/90 hover:bg-neutral-900 focus:bg-neutral-950 text-[11px] sm:text-xs text-white placeholder-neutral-500 border border-neutral-800 hover:border-neutral-700 focus:border-blue-500/70 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-[0_2px_8px_rgba(0,0,0,0.5),inset_0_1px_2px_rgba(0,0,0,0.4)] transition-all duration-200"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
                 aria-label="Clear search"
-                className="absolute right-2.5 p-1 rounded-full text-neutral-400 hover:text-white hover:bg-white/10 transition-all duration-150 cursor-pointer"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-neutral-400 hover:text-white hover:bg-white/10 transition-all duration-150 cursor-pointer flex items-center justify-center z-10"
               >
                 <X className="w-3 h-3" />
               </button>
             )}
+          </div>
+
+          {/* Filter Option Button (matching uploaded design) */}
+          <div className="relative shrink-0" ref={filterRef}>
+            <button
+              onClick={() => setIsFilterOpen((prev) => !prev)}
+              title="Filter & Sort"
+              aria-label="Filter & Sort"
+              aria-expanded={isFilterOpen}
+              className={`w-8 h-8 sm:w-9 sm:h-9 rounded-[13px] flex items-center justify-center transition-all duration-200 border cursor-pointer active:scale-95 shadow-md relative ${
+                isFilterOpen || mediaType !== 'all' || sortBy !== 'default'
+                  ? 'bg-[#2563EB] border-blue-400/50 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]'
+                  : 'bg-[#22242b] hover:bg-[#2c2f38] text-white border-white/10 hover:border-white/20'
+              }`}
+            >
+              <FilterSlidersIcon className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-white" />
+              
+              {/* Active Indicator Badge */}
+              {(mediaType !== 'all' || sortBy !== 'default') && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-blue-400 ring-2 ring-[#090A0F] animate-pulse" />
+              )}
+            </button>
+
+            {/* Filter Dropdown Popover */}
+            <AnimatePresence>
+              {isFilterOpen && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 4 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 4 }}
+                  transition={{ duration: 0.14, ease: 'easeOut' }}
+                  className="absolute right-0 sm:right-auto sm:left-0 mt-1.5 w-64 sm:w-72 max-w-[calc(100vw-1.5rem)] bg-[#121319]/95 backdrop-blur-2xl border border-white/12 rounded-xl p-3 sm:p-3.5 shadow-[0_16px_36px_rgba(0,0,0,0.85)] z-50 text-white font-sans"
+                >
+                  {/* Popover Header */}
+                  <div className="flex items-center justify-between pb-2 border-b border-white/10 mb-2.5">
+                    <div className="flex items-center gap-1.5">
+                      <FilterSlidersIcon className="w-3.5 h-3.5 text-blue-400" />
+                      <span className="font-semibold text-xs text-white tracking-tight">Filter & Sort</span>
+                    </div>
+                    {(mediaType !== 'all' || sortBy !== 'default') && (
+                      <button
+                        onClick={() => {
+                          setMediaType('all');
+                          setSortBy('default');
+                        }}
+                        className="text-[10px] font-medium text-neutral-400 hover:text-blue-400 transition-colors cursor-pointer"
+                      >
+                        Reset All
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Separate for Videos / Images */}
+                  <div className="mb-2.5 sm:mb-3">
+                    <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-wider mb-1.5">
+                      Media Type
+                    </label>
+                    <div className="grid grid-cols-3 gap-1 p-0.5 bg-black/50 border border-white/10 rounded-lg">
+                      <button
+                        onClick={() => setMediaType('all')}
+                        className={`py-1 px-1.5 rounded-md text-center text-[10.5px] font-medium transition-all cursor-pointer ${
+                          mediaType === 'all'
+                            ? 'bg-[#2563EB] text-white shadow-sm'
+                            : 'text-neutral-400 hover:text-white hover:bg-white/5'
+                        }`}
+                      >
+                        All
+                      </button>
+                      <button
+                        onClick={() => {
+                          setMediaType('images');
+                          if (selectedCategory === 'VIDEOGRAPHY') {
+                            setSelectedCategory('ALL');
+                          }
+                        }}
+                        className={`py-1 px-1.5 rounded-md text-center text-[10.5px] font-medium transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                          mediaType === 'images'
+                            ? 'bg-[#2563EB] text-white shadow-sm'
+                            : 'text-neutral-400 hover:text-white hover:bg-white/5'
+                        }`}
+                      >
+                        <Camera className="w-2.5 h-2.5" />
+                        <span>Images</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setMediaType('videos');
+                          if (selectedCategory !== 'ALL' && selectedCategory !== 'VIDEOGRAPHY') {
+                            setSelectedCategory('ALL');
+                          }
+                        }}
+                        className={`py-1 px-1.5 rounded-md text-center text-[10.5px] font-medium transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                          mediaType === 'videos'
+                            ? 'bg-[#2563EB] text-white shadow-sm'
+                            : 'text-neutral-400 hover:text-white hover:bg-white/5'
+                        }`}
+                      >
+                        <Video className="w-2.5 h-2.5" />
+                        <span>Videos</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Sort by A-Z, Latest, Oldest */}
+                  <div>
+                    <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-wider mb-1.5">
+                      Sort By
+                    </label>
+                    <div className="space-y-0.5">
+                      {[
+                        { id: 'latest', label: 'Latest', desc: 'Recently added to website' },
+                        { id: 'oldest', label: 'Oldest', desc: 'First added to website' },
+                        { id: 'a-z', label: 'A – Z', desc: 'Alphabetical order' },
+                        { id: 'z-a', label: 'Z – A', desc: 'Reverse alphabetical' },
+                      ].map((option) => (
+                        <button
+                          key={option.id}
+                          onClick={() => setSortBy((prev) => (prev === option.id ? 'default' : (option.id as SortByOption)))}
+                          className={`w-full flex items-center justify-between py-1.5 px-2 rounded-lg transition-all cursor-pointer text-left ${
+                            sortBy === option.id
+                              ? 'bg-blue-600/20 text-white font-medium border border-blue-500/40'
+                              : 'text-neutral-300 hover:bg-white/5 hover:text-white'
+                          }`}
+                        >
+                          <div>
+                            <span className="block text-[11px] font-semibold leading-tight">{option.label}</span>
+                            <span className="block text-[9.5px] text-neutral-400 leading-tight">{option.desc}</span>
+                          </div>
+                          {sortBy === option.id && (
+                            <Check className="w-3.5 h-3.5 text-blue-400 stroke-[2.5] shrink-0 ml-1.5" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
@@ -927,6 +1268,54 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
 
       {/* Main Gallery Area - Orderly Responsive Grid */}
       <main className="max-w-[1540px] mx-auto px-2 xs:px-3 sm:px-6 md:px-8 py-4 sm:py-8 relative z-10">
+        {/* Active Filter Chips */}
+        {(mediaType !== 'all' || sortBy !== 'default') && (
+          <div className="mb-4 flex items-center gap-2 flex-wrap">
+            <span className="text-[11px] text-neutral-400 font-medium">Active filters:</span>
+            {mediaType !== 'all' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/15 border border-blue-500/30 text-blue-300 shadow-sm">
+                <span>{mediaType === 'images' ? 'Images only' : 'Videos only'}</span>
+                <button
+                  onClick={() => setMediaType('all')}
+                  className="hover:text-white cursor-pointer ml-0.5"
+                  aria-label="Clear media filter"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            {sortBy !== 'default' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/15 border border-purple-500/30 text-purple-300 shadow-sm">
+                <span>
+                  Sort:{' '}
+                  {sortBy === 'latest'
+                    ? 'Latest'
+                    : sortBy === 'oldest'
+                    ? 'Oldest'
+                    : sortBy === 'a-z'
+                    ? 'A – Z'
+                    : 'Z – A'}
+                </span>
+                <button
+                  onClick={() => setSortBy('default')}
+                  className="hover:text-white cursor-pointer ml-0.5"
+                  aria-label="Clear sort"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            <button
+              onClick={() => {
+                setMediaType('all');
+                setSortBy('default');
+              }}
+              className="text-[11px] text-neutral-400 hover:text-white underline cursor-pointer ml-1"
+            >
+              Reset all
+            </button>
+          </div>
+        )}
         <AnimatePresence mode="wait">
           <motion.div
             key={`${selectedCategory}-${animKey}`}
@@ -970,14 +1359,23 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
                 </div>
               </div>
             ) : (
-              filteredItems.map((item, idx) => (
-                <GalleryCard
-                  key={item.id}
-                  item={item}
-                  priority={idx < 10}
-                  onSelect={setActiveItem}
-                />
-              ))
+              <>
+                {visibleItems.map((item, idx) => (
+                  <GalleryCard
+                    key={item.id}
+                    item={item}
+                    priority={idx < 8}
+                    onSelect={setActiveItem}
+                  />
+                ))}
+                {visibleCount < filteredItems.length && (
+                  <div
+                    ref={loadMoreRef}
+                    className="col-span-full h-4 pointer-events-none"
+                    aria-hidden="true"
+                  />
+                )}
+              </>
             )}
           </motion.div>
         </AnimatePresence>
@@ -1044,6 +1442,7 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
                     src={activeItem.url}
                     alt=""
                     aria-hidden="true"
+                    decoding="async"
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-cover blur-2xl scale-125 opacity-35 select-none"
                   />
@@ -1072,6 +1471,7 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
                         autoPlay
                         playsInline
                         loop
+                        preload="metadata"
                         className="h-full w-auto max-w-full object-contain rounded-[18px] select-none block shadow-2xl"
                       />
                     )
@@ -1079,6 +1479,7 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
                     <img
                       src={activeItem.url}
                       alt={activeItem.title}
+                      decoding="async"
                       referrerPolicy="no-referrer"
                       className="h-full w-auto max-w-full object-contain rounded-[18px] select-none block shadow-2xl transition-all duration-300"
                     />
@@ -1106,24 +1507,32 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
                   </>
                 )}
 
-                {/* Download Pill Button */}
-                <button
-                  onClick={(e) => handleDownload(activeItem.videoUrl || activeItem.url, activeItem.title, e, !!activeItem.videoUrl)}
-                  title={activeItem.videoUrl ? 'Download video (MP4)' : 'Download photo (JPG)'}
-                  className="absolute bottom-3.5 right-3.5 z-20 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-black/80 hover:bg-white text-neutral-200 hover:text-black border border-white/15 backdrop-blur-md text-xs font-sans font-medium transition-all duration-200 shadow-lg active:scale-95 cursor-pointer group"
-                >
-                  {downloading ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-emerald-400 stroke-[2.5] animate-bounce" />
-                      <span>{activeItem.videoUrl ? 'Downloading...' : 'Saving...'}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Download className="w-3.5 h-3.5 group-hover:translate-y-0.5 transition-transform" />
-                      <span>{activeItem.videoUrl ? 'Download Video' : 'Download'}</span>
-                    </>
-                  )}
-                </button>
+                {/* Action Buttons: Share & Download positioned alongside each other (Icon only) */}
+                <div className="absolute bottom-3.5 right-3.5 z-20 flex items-center gap-2">
+                  {/* Share Button */}
+                  <button
+                    onClick={handleShare}
+                    title="Share work"
+                    aria-label="Share work"
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/80 hover:bg-white text-neutral-200 hover:text-black border border-white/15 backdrop-blur-md transition-all duration-200 shadow-lg active:scale-95 cursor-pointer group flex items-center justify-center"
+                  >
+                    <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 group-hover:scale-110 transition-transform" />
+                  </button>
+
+                  {/* Download Button */}
+                  <button
+                    onClick={(e) => handleDownload(activeItem.videoUrl || activeItem.url, activeItem.title, e, !!activeItem.videoUrl)}
+                    title={activeItem.videoUrl ? 'Download video (MP4)' : 'Download photo (JPG)'}
+                    aria-label={activeItem.videoUrl ? 'Download video (MP4)' : 'Download photo (JPG)'}
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/80 hover:bg-white text-neutral-200 hover:text-black border border-white/15 backdrop-blur-md transition-all duration-200 shadow-lg active:scale-95 cursor-pointer group flex items-center justify-center"
+                  >
+                    {downloading ? (
+                      <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 stroke-[2.5] animate-bounce" />
+                    ) : (
+                      <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 group-hover:translate-y-0.5 transition-transform" />
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* Centered Typography: Title & Subtitle */}
@@ -1136,6 +1545,15 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
                 </p>
               </div>
             </motion.div>
+
+            {/* Social Share Modal Popup */}
+            <ShareModal
+              isOpen={isShareModalOpen}
+              onClose={() => setIsShareModalOpen(false)}
+              title={activeItem.title}
+              text={`Check out "${activeItem.title}" (${activeItem.category}) by Muhammed Mushfiq (MUSHFII)`}
+              url={typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}#${activeItem.id}` : undefined}
+            />
           </div>
         )}
       </AnimatePresence>

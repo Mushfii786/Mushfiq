@@ -3,10 +3,10 @@ import { motion } from 'motion/react';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import { photography, videography } from '../config/site';
 import { Project, Photo, VideoItem } from '../types';
-const ProjectModal = React.lazy(() => import('./ProjectModal').then((m) => ({ default: m.ProjectModal })));
-const PhotoLightbox = React.lazy(() => import('./PhotoLightbox').then((m) => ({ default: m.PhotoLightbox })));
-const VideoLightbox = React.lazy(() => import('./VideoLightbox').then((m) => ({ default: m.VideoLightbox })));
-const GalleryPage = React.lazy(() => import('./GalleryPage').then((m) => ({ default: m.GalleryPage })));
+import { ProjectModal } from './ProjectModal';
+import { PhotoLightbox } from './PhotoLightbox';
+import { VideoLightbox } from './VideoLightbox';
+import { GalleryPage } from './GalleryPage';
 import { CoverFlowGallery, CoverFlowItem } from './CoverFlowGallery';
 import RegeneratedImage from '../assets/images/regenerated_image_1786114032574.webp'; 
 import RegeneratedImage2 from '../assets/images/regenerated_image_1786192879031.jpg'; 
@@ -145,8 +145,7 @@ export const Projects = memo(function Projects() {
         </button>
       </div>
 
-      {/* Modal for Project Detail */}
-      <React.Suspense fallback={null}>
+        {/* Modal for Project Detail */}
         {activeProject && (
           <ProjectModal
             project={activeProject}
@@ -178,7 +177,6 @@ export const Projects = memo(function Projects() {
         {showFullGallery && (
           <GalleryPage onClose={() => setShowFullGallery(false)} />
         )}
-      </React.Suspense>
 
     </section>
   );

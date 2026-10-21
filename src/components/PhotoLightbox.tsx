@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronLeft, ChevronRight, Download, Check } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Download, Check, Share2 } from 'lucide-react';
+import { ShareModal } from './ShareModal';
 import { Photo } from '../types';
 import { siteConfig } from '../config/site';
 
@@ -13,9 +14,25 @@ interface PhotoLightboxProps {
 
 export function PhotoLightbox({ photo, photos, onClose, onSelectPhoto }: PhotoLightboxProps) {
   const [downloading, setDownloading] = useState(false);
-  if (!photo) return null;
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
-  const currentIndex = photos.findIndex(p => p.id === photo.id);
+  const currentIndex = photo ? photos.findIndex(p => p.id === photo.id) : -1;
+
+  // Preload adjacent photos for instant Next/Previous transitions
+  useEffect(() => {
+    if (!photo || photos.length <= 1 || currentIndex === -1) return;
+    const nextPhoto = photos[(currentIndex + 1) % photos.length];
+    const prevPhoto = photos[(currentIndex - 1 + photos.length) % photos.length];
+    [nextPhoto?.url, prevPhoto?.url].forEach((src) => {
+      if (src) {
+        const img = new Image();
+        img.decoding = 'async';
+        img.src = src;
+      }
+    });
+  }, [photo, photos, currentIndex]);
+
+  if (!photo) return null;
 
   const handlePrev = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -112,6 +129,7 @@ export function PhotoLightbox({ photo, photos, onClose, onSelectPhoto }: PhotoLi
                   src={photo.url}
                   alt=""
                   aria-hidden="true"
+                  decoding="async"
                   className="w-full h-full object-cover blur-2xl scale-125 opacity-35 select-none"
                 />
                 <div className="absolute inset-0 bg-neutral-950/40" />
@@ -124,29 +142,41 @@ export function PhotoLightbox({ photo, photos, onClose, onSelectPhoto }: PhotoLi
                 <img
                   src={photo.url}
                   alt={photo.title}
+                  decoding="async"
                   className="h-full w-auto max-w-full object-contain rounded-[18px] select-none block shadow-2xl"
                 />
               ) : null}
             </div>
 
-            {/* Premium Download Pill Button */}
-            <button
-              onClick={handleDownload}
-              title="Download image"
-              className="absolute bottom-3.5 right-3.5 z-20 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-black/80 hover:bg-white text-neutral-200 hover:text-black border border-white/15 backdrop-blur-md text-xs font-sans font-medium transition-all duration-200 shadow-lg active:scale-95 cursor-pointer group"
-            >
-              {downloading ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-400 stroke-[2.5]" />
-                  <span>Saved</span>
-                </>
-              ) : (
-                <>
-                  <Download className="w-3.5 h-3.5 transition-transform duration-200 group-hover:-translate-y-0.5" />
-                  <span>Download</span>
-                </>
-              )}
-            </button>
+            {/* Action Buttons: Share & Download positioned alongside each other (Icon only) */}
+            <div className="absolute bottom-3.5 right-3.5 z-20 flex items-center gap-2">
+              {/* Share Button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsShareModalOpen(true);
+                }}
+                title="Share photo"
+                aria-label="Share photo"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/80 hover:bg-white text-neutral-200 hover:text-black border border-white/15 backdrop-blur-md transition-all duration-200 shadow-lg active:scale-95 cursor-pointer group flex items-center justify-center"
+              >
+                <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 group-hover:scale-110 transition-transform" />
+              </button>
+
+              {/* Download Button */}
+              <button
+                onClick={handleDownload}
+                title="Download image"
+                aria-label="Download image"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/80 hover:bg-white text-neutral-200 hover:text-black border border-white/15 backdrop-blur-md transition-all duration-200 shadow-lg active:scale-95 cursor-pointer group flex items-center justify-center"
+              >
+                {downloading ? (
+                  <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 stroke-[2.5]" />
+                ) : (
+                  <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform duration-200 group-hover:-translate-y-0.5" />
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Bottom Bar: Title & Subtitle/Location (Centered) */}
@@ -159,6 +189,15 @@ export function PhotoLightbox({ photo, photos, onClose, onSelectPhoto }: PhotoLi
             </p>
           </div>
         </motion.div>
+
+        {/* Share Modal */}
+        <ShareModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          title={photo.title}
+          text={`Check out "${photo.title}" by Muhammed Mushfiq (MUSHFII)`}
+          url={typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}#${photo.id}` : undefined}
+        />
       </div>
     </AnimatePresence>
   );

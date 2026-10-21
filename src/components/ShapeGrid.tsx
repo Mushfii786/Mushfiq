@@ -235,6 +235,7 @@ export const ShapeGrid = memo(function ShapeGrid({
     }
 
     let lastTime = performance.now();
+    let lastTrailSampleTime = 0;
 
     const render = (time: number) => {
       animFrameIdRef.current = requestAnimationFrame(render);
@@ -242,31 +243,33 @@ export const ShapeGrid = memo(function ShapeGrid({
       if (isHiddenRef.current || isScrolling || reducedMotionRef.current) return;
 
       const dt = Math.min((time - lastTime) / 1000, 0.1);
-      // Throttle background grid animation to ~30fps when cursor is idle
-      if (!mouseRef.current.isHovering && dt < 0.032) return;
+      // Throttle background grid animation to ~30fps when cursor is idle and trail has faded
+      if (!mouseRef.current.isHovering && trailRef.current.length === 0 && dt < 0.032) return;
       lastTime = time;
 
+      const frameScale = dt * 60;
       const moveStep = speed * 30 * dt;
       offsetRef.current.x = (offsetRef.current.x + dx * moveStep) % currentSquareSize;
       offsetRef.current.y = (offsetRef.current.y + dy * moveStep) % currentSquareSize;
 
       const mouse = mouseRef.current;
-      const lerpSpeed = 0.25;
+      const lerpFactor = 1 - Math.pow(1 - 0.25, frameScale);
       if (mouse.isHovering) {
-        mouse.x += (mouse.targetX - mouse.x) * lerpSpeed;
-        mouse.y += (mouse.targetY - mouse.y) * lerpSpeed;
+        mouse.x += (mouse.targetX - mouse.x) * lerpFactor;
+        mouse.y += (mouse.targetY - mouse.y) * lerpFactor;
       } else {
-        mouse.x += (-1000 - mouse.x) * lerpSpeed;
-        mouse.y += (-1000 - mouse.y) * lerpSpeed;
+        mouse.x += (-1000 - mouse.x) * lerpFactor;
+        mouse.y += (-1000 - mouse.y) * lerpFactor;
       }
 
       const trail = trailRef.current;
-      const decayFactor = 0.88;
+      const decayFactor = Math.pow(0.88, frameScale);
       for (let i = 0; i < trail.length; i++) {
         trail[i].intensity *= decayFactor;
       }
 
-      if (mouse.x > -500 && mouse.y > -500) {
+      if (mouse.x > -500 && mouse.y > -500 && time - lastTrailSampleTime >= 14) {
+        lastTrailSampleTime = time;
         trail.push({ x: mouse.x, y: mouse.y, intensity: 1.0 });
       }
 

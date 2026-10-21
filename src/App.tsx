@@ -36,7 +36,9 @@ export function App() {
     });
 
     function raf(time: number) {
-      lenis.raf(time);
+      if (!document.hidden && document.body.style.overflow !== 'hidden') {
+        lenis.raf(time);
+      }
       rafId = requestAnimationFrame(raf);
     }
 

@@ -244,6 +244,16 @@ html.lenis, html.lenis body {
   will-change: background-position;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .animate-wave-slow,
+  .animate-wave-medium,
+  .animate-wave-fast,
+  .animate-gradient-flow {
+    animation: none !important;
+    will-change: auto !important;
+  }
+}
+
 /* Custom Modal & Gallery Scroll Slider */
 .modal-scroll-slider {
   scrollbar-width: thin;

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { siteConfig, timelineItems, techStack } from '../config/site';
 import { SiteConfig, TimelineItem, TechItem } from '../types';
 import { db, isFirebaseConfigured } from '../lib/firebase';
@@ -58,7 +58,7 @@ export function FirebaseDataProvider({ children }: { children: ReactNode }) {
     }
   });
 
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
 
   // If Firebase is configured, subscribe to Firestore documents for live profile updates
   useEffect(() => {
@@ -83,12 +83,14 @@ export function FirebaseDataProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const updateSiteProfile = async (updated: Partial<SiteConfig>) => {
-    const next = { ...siteProfile, ...updated };
-    setSiteProfile(next);
-    try {
-      localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(next));
-    } catch {}
+  const updateSiteProfile = useCallback(async (updated: Partial<SiteConfig>) => {
+    setSiteProfile((prev) => {
+      const next = { ...prev, ...updated };
+      try {
+        localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
 
     if (db && isFirebaseConfigured) {
       try {
@@ -97,37 +99,40 @@ export function FirebaseDataProvider({ children }: { children: ReactNode }) {
         console.warn('Could not sync profile to Firestore:', err);
       }
     }
-  };
+  }, []);
 
-  const updateTimeline = async (updated: TimelineItem[]) => {
+  const updateTimeline = useCallback(async (updated: TimelineItem[]) => {
     setTimeline(updated);
     try {
       localStorage.setItem(LOCAL_TIMELINE_KEY, JSON.stringify(updated));
     } catch {}
-  };
+  }, []);
 
-  const updateTechStack = async (updated: TechItem[]) => {
+  const updateTechStack = useCallback(async (updated: TechItem[]) => {
     setTechStackState(updated);
     try {
       localStorage.setItem(LOCAL_TECH_KEY, JSON.stringify(updated));
     } catch {}
-  };
+  }, []);
 
-  const refreshData = async () => {};
+  const refreshData = useCallback(async () => {}, []);
+
+  const contextValue = useMemo(
+    () => ({
+      siteProfile,
+      timeline,
+      techStack: techStackState,
+      loading,
+      refreshData,
+      updateSiteProfile,
+      updateTimeline,
+      updateTechStack,
+    }),
+    [siteProfile, timeline, techStackState, loading, refreshData, updateSiteProfile, updateTimeline, updateTechStack]
+  );
 
   return (
-    <FirebaseDataContext.Provider
-      value={{
-        siteProfile,
-        timeline,
-        techStack: techStackState,
-        loading,
-        refreshData,
-        updateSiteProfile,
-        updateTimeline,
-        updateTechStack,
-      }}
-    >
+    <FirebaseDataContext.Provider value={contextValue}>
       {children}
     </FirebaseDataContext.Provider>
   );

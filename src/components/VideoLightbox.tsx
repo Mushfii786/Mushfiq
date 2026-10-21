@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronLeft, ChevronRight, Video, MapPin, Calendar, Film, Eye, Heart, Volume2, VolumeX, Play, Pause, Maximize } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Video, MapPin, Calendar, Film, Eye, Heart, Volume2, VolumeX, Play, Pause, Maximize, Share2 } from 'lucide-react';
+import { ShareModal } from './ShareModal';
 import { VideoItem } from '../types';
 
 interface VideoLightboxProps {
@@ -15,10 +16,24 @@ export function VideoLightbox({ video, videos, onClose, onSelectVideo }: VideoLi
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   useEffect(() => {
-    setIsPlaying(true);
     setProgress(0);
+    const vid = videoRef.current;
+    if (!vid || !video || video.videoUrl.includes('pinterest.com')) return;
+
+    const playPromise = vid.play();
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          setIsPlaying(true);
+        })
+        .catch(() => {
+          // If browser blocks unmuted autoplay, remain paused until user clicks play (preserving user audio intent)
+          setIsPlaying(false);
+        });
+    }
   }, [video]);
 
   if (!video) return null;
@@ -26,14 +41,15 @@ export function VideoLightbox({ video, videos, onClose, onSelectVideo }: VideoLi
   const currentIndex = videos.findIndex(v => v.id === video.id);
 
   const togglePlay = () => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-        setIsPlaying(false);
-      } else {
-        videoRef.current.play();
-        setIsPlaying(true);
-      }
+    const vid = videoRef.current;
+    if (!vid) return;
+    if (!vid.paused) {
+      vid.pause();
+      setIsPlaying(false);
+    } else {
+      vid.play()
+        .then(() => setIsPlaying(true))
+        .catch(() => setIsPlaying(false));
     }
   };
 
@@ -47,7 +63,7 @@ export function VideoLightbox({ video, videos, onClose, onSelectVideo }: VideoLi
   const toggleFullscreen = () => {
     if (videoRef.current) {
       if (videoRef.current.requestFullscreen) {
-        videoRef.current.requestFullscreen();
+        videoRef.current.requestFullscreen().catch(() => {});
       }
     }
   };
@@ -122,10 +138,12 @@ export function VideoLightbox({ video, videos, onClose, onSelectVideo }: VideoLi
                   ref={videoRef}
                   src={video.videoUrl}
                   poster={video.posterUrl}
-                  autoPlay
                   playsInline
                   loop
+                  preload="metadata"
                   muted={isMuted}
+                  onPlay={() => setIsPlaying(true)}
+                  onPause={() => setIsPlaying(false)}
                   onTimeUpdate={handleTimeUpdate}
                   onClick={togglePlay}
                   className="w-full h-full max-h-[75vh] object-contain cursor-pointer"
@@ -202,12 +220,23 @@ export function VideoLightbox({ video, videos, onClose, onSelectVideo }: VideoLi
                   <h3 className="text-2xl font-bold text-white mt-3 font-mono leading-tight">{video.title}</h3>
                 </div>
 
-                <button
-                  onClick={onClose}
-                  className="p-2 rounded-full hover:bg-neutral-800 text-neutral-400 hover:text-white hover:scale-110 active:scale-90 transition-all duration-200 cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setIsShareModalOpen(true)}
+                    className="p-2 rounded-full hover:bg-neutral-800 text-neutral-400 hover:text-white hover:scale-110 active:scale-90 transition-all duration-200 cursor-pointer"
+                    title="Share video"
+                    aria-label="Share video"
+                  >
+                    <Share2 className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={onClose}
+                    className="p-2 rounded-full hover:bg-neutral-800 text-neutral-400 hover:text-white hover:scale-110 active:scale-90 transition-all duration-200 cursor-pointer"
+                    aria-label="Close"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
               <p className="text-sm text-neutral-300 font-light leading-relaxed mb-6">
@@ -259,6 +288,15 @@ export function VideoLightbox({ video, videos, onClose, onSelectVideo }: VideoLi
             </div>
           </div>
         </motion.div>
+
+        {/* Share Modal */}
+        <ShareModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          title={video.title}
+          text={`Check out "${video.title}" by Muhammed Mushfiq (MUSHFII)`}
+          url={typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}#${video.id}` : undefined}
+        />
       </div>
     </AnimatePresence>
   );

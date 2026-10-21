@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { 
   onAuthStateChanged, 
   signInWithPopup, 
@@ -69,8 +69,14 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Listen to inquiries live or load from local storage
+  const isAdmin = Boolean(
+    user?.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()
+  );
+
+  // Listen to inquiries live when admin is authenticated, or load local cache
   useEffect(() => {
+    if (!isAdmin) return;
+
     if (db && isFirebaseConfigured) {
       try {
         const q = query(collection(db, 'inquiries'), orderBy('createdAt', 'desc'));
@@ -104,9 +110,9 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
     } else {
       getContactMessages().then(setMessages);
     }
-  }, []);
+  }, [isAdmin]);
 
-  const loginWithGoogle = async (): Promise<User | null> => {
+  const loginWithGoogle = useCallback(async (): Promise<User | null> => {
     if (auth && googleProvider && isFirebaseConfigured) {
       try {
         const result = await signInWithPopup(auth, googleProvider);
@@ -127,9 +133,9 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       setUser(mockUser);
       return mockUser;
     }
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     if (auth && isFirebaseConfigured) {
       await signOut(auth);
     }
@@ -137,9 +143,9 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
     try {
       sessionStorage.removeItem('mushfiq_videography_admin_session');
     } catch {}
-  };
+  }, []);
 
-  const markAsRead = async (id: string) => {
+  const markAsRead = useCallback(async (id: string) => {
     setMessages((prev) =>
       prev.map((m) => (m.id === id ? { ...m, read: true } : m))
     );
@@ -148,43 +154,44 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
         await updateDoc(doc(db, 'inquiries', id), { read: true });
       } catch {}
     }
-  };
+  }, []);
 
-  const deleteMessage = async (id: string) => {
-    setMessages((prev) => prev.filter((m) => m.id !== id));
-    try {
-      const updated = messages.filter((m) => m.id !== id);
-      localStorage.setItem(LOCAL_INQUIRIES_KEY, JSON.stringify(updated));
-    } catch {}
+  const deleteMessage = useCallback(async (id: string) => {
+    setMessages((prev) => {
+      const updated = prev.filter((m) => m.id !== id);
+      try {
+        localStorage.setItem(LOCAL_INQUIRIES_KEY, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
 
     if (db && isFirebaseConfigured) {
       try {
         await deleteDoc(doc(db, 'inquiries', id));
       } catch {}
     }
-  };
+  }, []);
 
-  const isAdmin = Boolean(
-    user?.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()
+  const unreadCount = useMemo(() => messages.filter((m) => !m.read).length, [messages]);
+
+  const contextValue = useMemo(
+    () => ({
+      user,
+      isAdmin,
+      isConfigured: isFirebaseConfigured,
+      loginWithGoogle,
+      logout,
+      messages,
+      unreadCount,
+      markAsRead,
+      deleteMessage,
+      loading,
+    }),
+    [user, isAdmin, loginWithGoogle, logout, messages, unreadCount, markAsRead, deleteMessage, loading]
   );
 
-  const unreadCount = messages.filter((m) => !m.read).length;
-
   return (
-    <FirebaseContext.Provider
-      value={{
-        user,
-        isAdmin,
-        isConfigured: isFirebaseConfigured,
-        loginWithGoogle,
-        logout,
-        messages,
-        unreadCount,
-        markAsRead,
-        deleteMessage,
-        loading,
-      }}
-    >
+    <FirebaseContext.Provider value={contextValue}>
       {children}
     </FirebaseContext.Provider>
   );

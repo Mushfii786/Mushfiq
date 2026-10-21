@@ -62,6 +62,9 @@ export function ProjectModal({ project, onClose }: ProjectModalProps) {
                 <img
                   src={project.image}
                   alt={project.title}
+                  width={1200}
+                  height={675}
+                  decoding="async"
                   className="w-full h-full object-cover"
                 />
               ) : null}
@@ -162,7 +165,15 @@ export function ProjectModal({ project, onClose }: ProjectModalProps) {
                   {project.gallery.map((imgUrl, i) => (
                     imgUrl ? (
                       <div key={i} className="aspect-[16/10] rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 hover:scale-[1.03] transition-transform duration-300">
-                        <img src={imgUrl} alt={`Gallery ${i}`} className="w-full h-full object-cover" />
+                        <img
+                          src={imgUrl}
+                          alt={`Gallery ${i}`}
+                          width={800}
+                          height={500}
+                          loading="lazy"
+                          decoding="async"
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                     ) : null
                   ))}
