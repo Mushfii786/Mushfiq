@@ -595,109 +595,78 @@ function FilterSlidersIcon({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-// Lightweight coordinator so at most one gallery video preview plays at a time without re-rendering the entire grid
-let activeGalleryVideoId: string | null = null;
-const videoPreviewSubscribers = new Set<(activeId: string | null) => void>();
-
-function setActiveGalleryVideoPreview(id: string | null) {
-  if (activeGalleryVideoId === id) return;
-  activeGalleryVideoId = id;
-  videoPreviewSubscribers.forEach((listener) => listener(id));
-}
-
 interface GalleryCardProps {
   item: GalleryItem;
   priority?: boolean;
+  isModalOpen?: boolean;
   onSelect: (item: GalleryItem) => void;
 }
 
-const GalleryCard = React.memo(function GalleryCard({ item, priority = false, onSelect }: GalleryCardProps) {
-  const [isHovered, setIsHovered] = useState(false);
-  const [isInViewport, setIsInViewport] = useState(true);
-  const [videoError, setVideoError] = useState(false);
+const GalleryCard = React.memo(function GalleryCard({
+  item,
+  priority = false,
+  isModalOpen = false,
+  onSelect,
+}: GalleryCardProps) {
+  const hasDirectVideo = Boolean(item.videoUrl && !item.videoUrl.includes('pinterest.com'));
+  const [isInViewport, setIsInViewport] = useState<boolean>(priority);
+  const [hasEnteredViewport, setHasEnteredViewport] = useState<boolean>(priority);
+  const [isVideoReady, setIsVideoReady] = useState<boolean>(false);
+  const [videoError, setVideoError] = useState<boolean>(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const previewVideoRef = useRef<HTMLVideoElement | null>(null);
 
-  // Subscribe only video cards to single-active preview coordinator and viewport observer
+  // Observe viewport proximity so videos start playing automatically before entering view and pause when far offscreen
   useEffect(() => {
-    if (!item.videoUrl) return;
-
-    const handleActiveChange = (activeId: string | null) => {
-      if (activeId !== item.id) {
-        setIsHovered(false);
-      }
-    };
-    videoPreviewSubscribers.add(handleActiveChange);
+    if (!hasDirectVideo) return;
 
     const el = cardRef.current;
-    let observer: IntersectionObserver | null = null;
-    if (el && typeof IntersectionObserver !== 'undefined') {
-      observer = new IntersectionObserver(
-        (entries) => {
-          const visible = entries[0]?.isIntersecting ?? false;
-          setIsInViewport(visible);
-          if (!visible && activeGalleryVideoId === item.id) {
-            setActiveGalleryVideoPreview(null);
-            setIsHovered(false);
-          }
-        },
-        { rootMargin: '100px 0px', threshold: 0.1 }
-      );
-      observer.observe(el);
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setIsInViewport(true);
+      setHasEnteredViewport(true);
+      return;
     }
 
-    return () => {
-      videoPreviewSubscribers.delete(handleActiveChange);
-      if (activeGalleryVideoId === item.id) {
-        activeGalleryVideoId = null;
-      }
-      observer?.disconnect();
-    };
-  }, [item.id, item.videoUrl]);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries[0]?.isIntersecting ?? false;
+        setIsInViewport(visible);
+        if (visible) {
+          setHasEnteredViewport(true);
+        }
+      },
+      { rootMargin: '400px 0px', threshold: 0.01 }
+    );
 
-  const shouldPlayPreview = Boolean(item.videoUrl && isHovered && isInViewport && !videoError);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasDirectVideo]);
+
+  const shouldPlayVideo = Boolean(hasDirectVideo && isInViewport && !isModalOpen && !videoError);
 
   useEffect(() => {
     const vid = previewVideoRef.current;
-    if (!vid || !shouldPlayPreview) return;
+    if (!vid || !hasDirectVideo || videoError) return;
 
-    const playPromise = vid.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(() => {
-        // Autoplay prevented by browser policy or low-power mode; keep poster visible
-        setIsHovered(false);
-      });
-    }
-
-    return () => {
+    if (shouldPlayVideo) {
+      vid.defaultMuted = true;
+      vid.muted = true;
+      vid.playsInline = true;
+      const playPromise = vid.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          vid.muted = true;
+          vid.play().catch(() => {});
+        });
+      }
+    } else {
       try {
         vid.pause();
       } catch {}
-    };
-  }, [shouldPlayPreview]);
-
-  const handleMouseEnter = useCallback(() => {
-    if (item.videoUrl) {
-      setVideoError(false);
-      setActiveGalleryVideoPreview(item.id);
-      setIsHovered(true);
     }
-  }, [item.id, item.videoUrl]);
-
-  const handleMouseLeave = useCallback(() => {
-    if (item.videoUrl) {
-      if (activeGalleryVideoId === item.id) {
-        setActiveGalleryVideoPreview(null);
-      }
-      setIsHovered(false);
-    }
-  }, [item.id, item.videoUrl]);
+  }, [hasDirectVideo, shouldPlayVideo, videoError]);
 
   const handleClick = useCallback(() => {
-    if (item.videoUrl && activeGalleryVideoId === item.id) {
-      setActiveGalleryVideoPreview(null);
-      setIsHovered(false);
-    }
     onSelect(item);
   }, [item, onSelect]);
 
@@ -705,8 +674,6 @@ const GalleryCard = React.memo(function GalleryCard({ item, priority = false, on
     <div
       ref={cardRef}
       onClick={handleClick}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
       className="group relative flex flex-col p-1.5 pb-2 sm:p-3 sm:pb-4 rounded-[14px] sm:rounded-[24px] md:rounded-[28px] bg-[#111216]/95 border sm:border-2 border-[#2563EB]/70 hover:border-[#3B82F6] shadow-[0_6px_20px_rgba(0,0,0,0.7),0_0_12px_rgba(37,99,235,0.15)] hover:shadow-[0_16px_40px_rgba(0,0,0,0.9),0_0_30px_rgba(37,99,235,0.35)] transition-all duration-300 active:scale-[0.97] cursor-pointer animate-fadeIn transform-gpu"
     >
       {/* Image / Video Container with Rounded Inside */}
@@ -721,30 +688,38 @@ const GalleryCard = React.memo(function GalleryCard({ item, priority = false, on
           loading={priority ? 'eager' : 'lazy'}
           fetchPriority={priority ? 'high' : 'auto'}
           referrerPolicy="no-referrer"
-          className={`w-full h-full object-cover transition-all duration-500 ease-out group-hover:scale-105 ${
-            shouldPlayPreview ? 'opacity-0' : 'opacity-100'
+          className={`w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105 ${
+            isVideoReady && hasDirectVideo && !videoError ? 'opacity-0' : 'opacity-100'
           }`}
         />
 
-        {/* Hover Auto Preview Video — mounted only on intentional hover when visible in viewport */}
-        {shouldPlayPreview && !item.videoUrl?.includes('pinterest.com') && (
+        {/* Automatic Seamless Video Playback */}
+        {hasDirectVideo && (hasEnteredViewport || isInViewport) && !videoError && (
           <video
             ref={previewVideoRef}
             src={item.videoUrl}
             poster={item.url}
+            autoPlay
             muted
             loop
             playsInline
-            preload="metadata"
+            disablePictureInPicture
+            disableRemotePlayback
+            preload={priority || isInViewport ? 'auto' : 'metadata'}
+            onLoadedData={() => setIsVideoReady(true)}
+            onCanPlay={() => setIsVideoReady(true)}
+            onPlaying={() => setIsVideoReady(true)}
             onError={() => setVideoError(true)}
-            className="absolute inset-0 w-full h-full object-cover transition-opacity duration-300 pointer-events-none opacity-100 scale-105"
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-200 pointer-events-none transform-gpu group-hover:scale-105 ${
+              isVideoReady ? 'opacity-100' : 'opacity-0'
+            }`}
           />
         )}
 
         {/* Play Icon Badge */}
         {item.category === 'Videography' && (
           <div className={`absolute top-2 right-2 sm:top-2.5 sm:right-2.5 z-10 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-black/75 backdrop-blur-md border border-white/25 flex items-center justify-center text-white shadow-lg transition-all duration-200 ${
-            shouldPlayPreview ? 'bg-[#2563EB] border-[#2563EB] scale-110' : 'group-hover:bg-[#2563EB] group-hover:border-[#2563EB]'
+            shouldPlayVideo ? 'bg-[#2563EB] border-[#2563EB]' : 'group-hover:bg-[#2563EB] group-hover:border-[#2563EB]'
           }`}>
             <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-white text-white ml-0.5" />
           </div>
@@ -764,7 +739,7 @@ const GalleryCard = React.memo(function GalleryCard({ item, priority = false, on
   );
 });
 
-const INITIAL_BATCH_SIZE = 24;
+const INITIAL_BATCH_SIZE = 60;
 
 export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPageProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory.toUpperCase());
@@ -1364,7 +1339,8 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
                   <GalleryCard
                     key={item.id}
                     item={item}
-                    priority={idx < 8}
+                    priority={idx < 12}
+                    isModalOpen={Boolean(activeItem)}
                     onSelect={setActiveItem}
                   />
                 ))}
@@ -1471,7 +1447,7 @@ export function GalleryPage({ onClose, initialCategory = 'ALL' }: GalleryPagePro
                         autoPlay
                         playsInline
                         loop
-                        preload="metadata"
+                        preload="auto"
                         className="h-full w-auto max-w-full object-contain rounded-[18px] select-none block shadow-2xl"
                       />
                     )
