@@ -704,6 +704,22 @@ export const videography: VideoItem[] = [
     likes: 1820
   },
   {
+    id: "video-vision-theme",
+    title: "VI-SION ‘26 Theme Song",
+    category: "Lyrical Video",
+    posterUrl: "/images/vision-26-theme-song-poster.jpg",
+    videoUrl: "/videos/vision-26-theme-song.mp4",
+    caption: "Lyrical Video",
+    location: "Lyrical Video",
+    duration: "0:30",
+    camera: "Sony A7IV",
+    lens: "35mm f/1.4 GM",
+    settings: "4K 60fps • S-Log3",
+    year: "2026 Film",
+    views: 28400,
+    likes: 3120
+  },
+  {
     id: "video-29",
     title: "Huda Literature Festival",
     category: "Highlights",
